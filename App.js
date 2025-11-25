@@ -1,43 +1,108 @@
-// App.js
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// Importe suas telas
-import WelcomeScreen from './src/screens/WelcomeScreen';
+// Firebase imports
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './src/firebase/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
+// Telas
+import LoginScreen from './src/screens/login';
+import RegisterScreen from './src/screens/registro';
+import ClienteHomeScreen from './src/screens/index_cliente';
+import PrestadorHomeScreen from './src/screens/index_prestador';
 
-// Crie o navegador
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null); // 'cliente' ou 'prestador'
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Escuta mudanças na autenticação (Login/Logout)
+    const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
+      
+      if (authenticatedUser) {
+        // Se logou, busca no banco se é cliente ou prestador
+        try {
+          const docRef = doc(db, "usuarios", authenticatedUser.uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            setUserRole(docSnap.data().tipo); 
+          }
+          setUser(authenticatedUser);
+        } catch (error) {
+          console.error("Erro ao buscar perfil:", error);
+        }
+      } else {
+        // Se deslogou
+        setUser(null);
+        setUserRole(null);
+      }
+      
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <StatusBar style="auto" /> 
+      <StatusBar style="auto" />
       
-      <Stack.Navigator initialRouteName="Welcome">
-        {/* Tela 1: Boas-vindas */}
-        <Stack.Screen
-          name="Welcome"
-          component={WelcomeScreen}
-          options={{ headerShown: false }} 
-        />
+      {/* initialRouteName="Login": Define o ponto de partida padrão.
+         A mágica acontece abaixo: Se 'user' existe, mostramos SÓ as telas de Home.
+         Se 'user' não existe, mostramos SÓ as telas de Auth (Login/Registro).
+      */}
+      <Stack.Navigator initialRouteName="Login">
         
-        {/* Tela 2: Login */}
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        
-        {/* ⬇️ 2. Adicione a tela de Calendário */}
-        <Stack.Screen
-          name="Calendar"
-          component={CalendarScreen}
-          options={{ title: 'Meu Calendário' }} // Você pode estilizar o header aqui
-        />
+        {user && userRole ? (
+          // --- USUÁRIO LOGADO ---
+          userRole === 'prestador' ? (
+             <Stack.Screen 
+               name="HomePrestador" 
+               component={PrestadorHomeScreen} 
+               options={{ title: 'Painel do Prestador' }}
+             />
+          ) : (
+             <Stack.Screen 
+               name="HomeCliente" 
+               component={ClienteHomeScreen} 
+               options={{ title: 'Área do Cliente' }}
+             />
+          )
+        ) : (
+          // --- USUÁRIO DESLOGADO ---
+          <>
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Register" 
+              component={RegisterScreen} 
+              options={{ 
+                title: '',
+                headerTransparent: true, // Seta flutuante
+                headerTintColor: '#007bff'
+              }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
