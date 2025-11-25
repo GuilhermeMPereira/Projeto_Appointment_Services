@@ -1,85 +1,103 @@
-// src/screens/WelcomeScreen.js
-
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ImageBackground } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { 
+  Text, 
+  View, 
+  TouchableOpacity,
+  ScrollView,
+  ImageBackground,
+  SafeAreaView,
+  Platform
+} from 'react-native';
+import { welcomeStyles } from '../styles/WelcomeScreenStyles';
 
 export default function WelcomeScreen({ navigation }) {
 
-const goToLoginScreen = () => {
-  navigation.navigate('Tela');
-};
+  const goToRegisterScreen = () => {
+    navigation.navigate('Register');
+  };
 
-  const cloudsBackground = { uri: '' }; 
+  const goToLoginScreen = () => {
+    navigation.navigate('Login');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Usamos ImageBackground aqui */}
-      <ImageBackground source={cloudsBackground} style={styles.backgroundImage} resizeMode="cover">
-        <View style={styles.content}>
-          <Text style={styles.title}>WeatherPos</Text>
-          <Text style={styles.subtitle}>
-            Encontre informações de endereço e clima a partir de um CEP.
-          </Text>
-          <TouchableOpacity style={styles.button} onPress={goToLoginScreen}>
-            <Text style={styles.buttonText}>Começar</Text>
-          </TouchableOpacity>
-        </View>
-      </ImageBackground>
+    <SafeAreaView style={welcomeStyles.container}>
+      <ScrollView 
+        style={welcomeStyles.container}
+        contentContainerStyle={welcomeStyles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <ImageBackground 
+          source={require('../../assets/fundoHome.png')} 
+          style={welcomeStyles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={welcomeStyles.overlay}>
+            <View style={welcomeStyles.header}>
+              <Text style={welcomeStyles.title}>
+                Appointment <Text style={welcomeStyles.titleAccent}>Services</Text>
+              </Text>
+            </View>
+            
+            <Text style={welcomeStyles.subtitle}>
+              Conectamos você aos profissionais mais qualificados{'\n'}
+              para resolver suas necessidades com excelência
+            </Text>
+
+            <View style={welcomeStyles.featuresContainer}>
+              <View style={welcomeStyles.featureItem}>
+                <View style={welcomeStyles.featureIcon}>
+                  <Text style={welcomeStyles.featureIconText}>✓</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={welcomeStyles.featureText}>Profissionais Verificados</Text>
+                  <Text style={welcomeStyles.featureDescription}>
+                    Especialistas qualificados e com histórico comprovado
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={welcomeStyles.featureItem}>
+                <View style={welcomeStyles.featureIcon}>
+                  <Text style={welcomeStyles.featureIconText}>⏱</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={welcomeStyles.featureText}>Agendamento Instantâneo</Text>
+                  <Text style={welcomeStyles.featureDescription}>
+                    Reserve serviços rapidamente no horário desejado
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={welcomeStyles.featureItem}>
+                <View style={welcomeStyles.featureIcon}>
+                  <Text style={welcomeStyles.featureIconText}>★</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={welcomeStyles.featureText}>Avaliações Transparentes</Text>
+                  <Text style={welcomeStyles.featureDescription}>
+                    Decisões baseadas em feedbacks reais de clientes
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity style={welcomeStyles.primaryButton} onPress={goToRegisterScreen}>
+              <Text style={welcomeStyles.primaryButtonText}>Registrar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={welcomeStyles.secondaryButton} onPress={goToLoginScreen}>
+              <Text style={welcomeStyles.secondaryButtonText}>Entrar</Text>
+            </TouchableOpacity>
+
+            <View style={welcomeStyles.footer}>
+              <Text style={welcomeStyles.footerText}>
+                Junte-se a milhares de clientes satisfeitos
+              </Text>
+            </View>
+          </View>
+        </ImageBackground>
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-   
-
-  },
-  backgroundImage: {
-    flex: 1, 
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    padding: 20,
-    alignItems: 'center',
-    width: '90%',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)', 
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#276eb1ff',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#627D98',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  button: {
-    backgroundColor: '#007BFF',
-    borderRadius: 8,
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});

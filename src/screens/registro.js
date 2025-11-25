@@ -1,12 +1,14 @@
+// src/screens/registro.js
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert 
+  View, Text, TextInput, TouchableOpacity, 
+  ActivityIndicator, ScrollView, ImageBackground,
+  KeyboardAvoidingView, Platform, Alert, SafeAreaView
 } from 'react-native';
-
 import { auth, db } from '../firebase/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { registerStyles } from '../styles/RegisterScreenStyles';
 
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
@@ -16,6 +18,7 @@ export default function RegisterScreen({ navigation }) {
   const [tipo, setTipo] = useState('cliente');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [focusedInput, setFocusedInput] = useState(null);
 
   useEffect(() => {
     setDocumento('');
@@ -101,7 +104,6 @@ export default function RegisterScreen({ navigation }) {
       await signOut(auth);
       
       Alert.alert("Sucesso", "Conta criada! Faça login para continuar.");
-      // O App.js detectará o logout e mostrará a tela de Login automaticamente.
 
     } catch (error) {
       console.error(error);
@@ -114,65 +116,157 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Crie sua conta</Text>
+    <SafeAreaView style={registerStyles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        style={registerStyles.container}
+      >
+        <ScrollView 
+          style={registerStyles.container}
+          contentContainerStyle={registerStyles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <ImageBackground 
+            source={require('../../assets/fundoHome.png')} 
+            style={registerStyles.backgroundImage}
+            resizeMode="cover"
+          >
+            <View style={registerStyles.overlay}>
+              <View style={registerStyles.formContainer}>
+                <View style={registerStyles.header}>
+                  <Text style={registerStyles.title}>Crie sua conta</Text>
+                </View>
 
-        <View style={styles.typeContainer}>
-          <TouchableOpacity style={[styles.typeButton, tipo === 'cliente' && styles.typeButtonSelected]} onPress={() => setTipo('cliente')}>
-            <Text style={[styles.typeText, tipo === 'cliente' && styles.typeTextSelected]}>Sou Cliente</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.typeButton, tipo === 'prestador' && styles.typeButtonSelected]} onPress={() => setTipo('prestador')}>
-            <Text style={[styles.typeText, tipo === 'prestador' && styles.typeTextSelected]}>Sou Prestador</Text>
-          </TouchableOpacity>
-        </View>
+                <View style={registerStyles.typeContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      registerStyles.typeButton, 
+                      tipo === 'cliente' && registerStyles.typeButtonSelected
+                    ]} 
+                    onPress={() => setTipo('cliente')}
+                  >
+                    <Text style={[
+                      registerStyles.typeText, 
+                      tipo === 'cliente' && registerStyles.typeTextSelected
+                    ]}>
+                      Sou Cliente
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      registerStyles.typeButton, 
+                      tipo === 'prestador' && registerStyles.typeButtonSelected
+                    ]} 
+                    onPress={() => setTipo('prestador')}
+                  >
+                    <Text style={[
+                      registerStyles.typeText, 
+                      tipo === 'prestador' && registerStyles.typeTextSelected
+                    ]}>
+                      Sou Prestador
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-        <Text style={styles.label}>Nome</Text>
-        <TextInput style={[styles.input, errors.nome && styles.inputError]} value={nome} onChangeText={setNome} placeholder="Nome completo" />
-        {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
+                <Text style={registerStyles.label}>Nome</Text>
+                <TextInput
+                  style={[
+                    registerStyles.input,
+                    focusedInput === 'nome' && registerStyles.inputFocused,
+                    errors.nome && registerStyles.inputError
+                  ]}
+                  value={nome}
+                  onChangeText={setNome}
+                  onFocus={() => setFocusedInput('nome')}
+                  onBlur={() => setFocusedInput(null)}
+                  placeholder="Nome completo"
+                  placeholderTextColor="#8a8a8a"
+                />
+                {errors.nome && <Text style={registerStyles.errorText}>{errors.nome}</Text>}
 
-        <Text style={styles.label}>E-mail</Text>
-        <TextInput style={[styles.input, errors.email && styles.inputError]} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="email@exemplo.com" />
-        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                <Text style={registerStyles.label}>E-mail</Text>
+                <TextInput
+                  style={[
+                    registerStyles.input,
+                    focusedInput === 'email' && registerStyles.inputFocused,
+                    errors.email && registerStyles.inputError
+                  ]}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedInput('email')}
+                  onBlur={() => setFocusedInput(null)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="email@exemplo.com"
+                  placeholderTextColor="#8a8a8a"
+                />
+                {errors.email && <Text style={registerStyles.errorText}>{errors.email}</Text>}
 
-        <Text style={styles.label}>{tipo === 'cliente' ? 'CPF' : 'CNPJ'}</Text>
-        <TextInput style={[styles.input, errors.documento && styles.inputError]} value={documento} onChangeText={handleDocumentChange} keyboardType="numeric" maxLength={18} placeholder="Documento" />
-        {errors.documento && <Text style={styles.errorText}>{errors.documento}</Text>}
+                <Text style={registerStyles.label}>{tipo === 'cliente' ? 'CPF' : 'CNPJ'}</Text>
+                <TextInput
+                  style={[
+                    registerStyles.input,
+                    focusedInput === 'documento' && registerStyles.inputFocused,
+                    errors.documento && registerStyles.inputError
+                  ]}
+                  value={documento}
+                  onChangeText={handleDocumentChange}
+                  onFocus={() => setFocusedInput('documento')}
+                  onBlur={() => setFocusedInput(null)}
+                  keyboardType="numeric"
+                  maxLength={18}
+                  placeholder="Documento"
+                  placeholderTextColor="#8a8a8a"
+                />
+                {errors.documento && <Text style={registerStyles.errorText}>{errors.documento}</Text>}
 
-        <Text style={styles.label}>Senha</Text>
-        <TextInput style={[styles.input, errors.senha && styles.inputError]} value={senha} onChangeText={setSenha} secureTextEntry placeholder="******" />
-        {errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
+                <Text style={registerStyles.label}>Senha</Text>
+                <TextInput
+                  style={[
+                    registerStyles.input,
+                    focusedInput === 'senha' && registerStyles.inputFocused,
+                    errors.senha && registerStyles.inputError
+                  ]}
+                  value={senha}
+                  onChangeText={setSenha}
+                  onFocus={() => setFocusedInput('senha')}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry
+                  placeholder="******"
+                  placeholderTextColor="#8a8a8a"
+                />
+                {errors.senha && <Text style={registerStyles.errorText}>{errors.senha}</Text>}
 
-        {errors.general && <Text style={styles.errorTextCenter}>{errors.general}</Text>}
+                {errors.general && <Text style={registerStyles.errorTextCenter}>{errors.general}</Text>}
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
-        </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[
+                    registerStyles.button,
+                    loading && registerStyles.buttonDisabled
+                  ]} 
+                  onPress={handleRegister} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <View style={registerStyles.loadingContainer}>
+                      <ActivityIndicator color="#FFF" />
+                    </View>
+                  ) : (
+                    <Text style={registerStyles.buttonText}>Cadastrar</Text>
+                  )}
+                </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.linkContainer}>
-            <Text style={styles.linkText}>Já tem uma conta? Faça Login</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Login')} 
+                  style={registerStyles.linkContainer}
+                >
+                  <Text style={registerStyles.linkText}>Já tem uma conta? Faça Login</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ImageBackground>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  typeContainer: { flexDirection: 'row', marginBottom: 20, backgroundColor: '#f0f0f0', borderRadius: 8, padding: 4 },
-  typeButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
-  typeButtonSelected: { backgroundColor: '#007bff' },
-  typeText: { fontWeight: '600', color: '#666' },
-  typeTextSelected: { color: '#fff' },
-  label: { fontSize: 16, marginBottom: 5, color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 5, fontSize: 16, backgroundColor: '#fafafa' },
-  inputError: { borderColor: '#d9534f', borderWidth: 1.5 },
-  errorText: { color: '#d9534f', fontSize: 12, marginBottom: 10 },
-  errorTextCenter: { color: '#d9534f', textAlign: 'center', marginBottom: 10, fontWeight: 'bold' },
-  button: { backgroundColor: '#007bff', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  linkContainer: { marginTop: 20, alignItems: 'center' },
-  linkText: { color: '#007bff', fontSize: 16 }
-});
