@@ -2,15 +2,15 @@
 
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ImageBackground } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // <-- MUDANÇA AQUI
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function WelcomeScreen({ navigation }) {
 
 const goToLoginScreen = () => {
-  navigation.navigate('Login'); // <-- CORRIGIDO
+  navigation.navigate('Tela');
 };
 
-  const cloudsBackground = { uri: 'https://i.pinimg.com/736x/e2/29/94/e2299480579cedc702576002d063f029.jpg' }; // Substitua por sua imagem real
+  const cloudsBackground = { uri: '' }; 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
    
-    // backgroundColor: '#E0F7FA', /
+
   },
   backgroundImage: {
     flex: 1, 

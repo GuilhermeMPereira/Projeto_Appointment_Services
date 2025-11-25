@@ -7,9 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Importe suas telas
 import WelcomeScreen from './src/screens/WelcomeScreen';
-import LoginScreen from './src/screens/LoginScreen'; 
-// ⬇️ 1. Importe a nova tela
-import CalendarScreen from './src/screens/CalendarScreen';
+
 
 // Crie o navegador
 const Stack = createNativeStackNavigator();
