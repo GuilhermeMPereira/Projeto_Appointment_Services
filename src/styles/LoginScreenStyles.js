@@ -20,16 +20,16 @@ export const loginStyles = StyleSheet.create({
     backgroundColor: 'rgba(212, 237, 218, 0.85)', 
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingBottom: 40,
   },
   formContainer: {
-    width: '100%',
-    maxWidth: 400,
+    width: '95%', // AUMENTADO PARA 95%
+    maxWidth: 450, // AUMENTADO LIMITE MÁXIMO (era 400)
     backgroundColor: '#FFFFFF', 
     borderRadius: 20,
-    padding: 30,
+    padding: 35, 
+    marginBottom: 80, 
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -75,7 +75,7 @@ export const loginStyles = StyleSheet.create({
     backgroundColor: '#F8F9FA', 
   },
   errorText: {
-    color: '#DC3545', // 
+    color: '#DC3545', 
     fontSize: 14,
     marginBottom: 15,
     textAlign: 'center',

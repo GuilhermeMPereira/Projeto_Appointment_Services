@@ -20,16 +20,17 @@ export const registerStyles = StyleSheet.create({
     backgroundColor: 'rgba(212, 237, 218, 0.85)', 
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    // paddingHorizontal removido para permitir largura de 95%
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 40,
   },
   formContainer: {
-    width: '100%',
-    maxWidth: 400,
+    width: '100%', 
+    maxWidth: 450, 
     backgroundColor: '#FFFFFF', 
     borderRadius: 20,
-    padding: 30,
+    padding: 35, 
+    marginBottom: 40, 
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
