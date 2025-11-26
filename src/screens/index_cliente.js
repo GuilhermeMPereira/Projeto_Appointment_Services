@@ -1,15 +1,26 @@
 // src/screens/index_cliente.js
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  TextInput, Alert, FlatList, Modal, ActivityIndicator 
+  View, Text, TouchableOpacity, ScrollView, 
+  TextInput, Alert, FlatList, Modal, ActivityIndicator,
+  ImageBackground, Image
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { auth, db } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, getDocs, addDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native'; 
-import PerfilClienteScreen from './perfil_cliente'; 
+import { 
+  collection, getDocs, addDoc, query, where, onSnapshot 
+} from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
+import PerfilClienteScreen from './perfil_cliente';
+import { clienteStyles } from '../styles/ClienteScreenStyles';
+
+// Imagens
+const lupaIcon = require('../../assets/lupa.jpg');
+const pedidosIcon = require('../../assets/pedidos.png');
+const avaliarIcon = require('../../assets/avaliar.jpg');
+const perfilIcon = require('../../assets/perfil.png');
+const sairIcon = require('../../assets/sair.png');
 
 LocaleConfig.locales['br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
@@ -23,11 +34,12 @@ LocaleConfig.defaultLocale = 'br';
 const HORARIOS_PADRAO = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
 export default function ClienteHomeScreen() {
-  const navigation = useNavigation(); 
+  const navigation = useNavigation();
   const [view, setView] = useState('Busca');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const user = auth.currentUser;
 
-  // --- LÓGICA DE LOGOUT BLINDADA ---
+  // --- LÓGICA DE LOGOUT BLINDADA DO CÓDIGO ORIGINAL ---
   const handleLogout = () => {
     Alert.alert(
       "Sair", 
@@ -37,13 +49,11 @@ export default function ClienteHomeScreen() {
         { 
           text: "Sair", 
           onPress: async () => {
-            // 1. Tenta deslogar do Firebase
             try {
               await signOut(auth);
             } catch (error) {
               console.log("Erro no Firebase (provavelmente AdBlock), mas vamos sair mesmo assim.");
             } finally {
-
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
@@ -55,14 +65,18 @@ export default function ClienteHomeScreen() {
     );
   };
 
-  // --- SUB-TELAS ---
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  // --- BUSCA & AGENDAMENTO (COM FUNCIONALIDADES DO CÓDIGO ORIGINAL) ---
   const RenderBusca = () => {
     const [prestadores, setPrestadores] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [selectedPrestador, setSelectedPrestador] = useState(null);
-    const [selectedService, setSelectedService] = useState(null); 
+    const [selectedService, setSelectedService] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
-    const [step, setStep] = useState(0); 
+    const [step, setStep] = useState(0);
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
@@ -77,7 +91,7 @@ export default function ClienteHomeScreen() {
 
     const iniciarAgendamento = (prestador) => {
       setSelectedPrestador(prestador);
-      setStep(0); 
+      setStep(0);
       setModalVisible(true);
       setSelectedService(null);
       setSelectedDate('');
@@ -86,7 +100,7 @@ export default function ClienteHomeScreen() {
 
     const escolherServico = (servico) => {
       setSelectedService(servico);
-      setStep(1); 
+      setStep(1);
     };
 
     const onDayPress = async (day) => {
@@ -105,7 +119,10 @@ export default function ClienteHomeScreen() {
       setLoadingSlots(true);
 
       try {
-        const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', selectedPrestador.id), where('dataString', '==', day.dateString), where('status', '==', 'confirmado'));
+        const q = query(collection(db, 'agendamentos'), 
+          where('prestadorId', '==', selectedPrestador.id), 
+          where('dataString', '==', day.dateString), 
+          where('status', '==', 'confirmado'));
         const snapshot = await getDocs(q);
         const horariosOcupados = snapshot.docs.map(doc => doc.data().horaString);
         const slotsLivres = HORARIOS_PADRAO.filter(hora => !horariosOcupados.includes(hora));
@@ -123,20 +140,20 @@ export default function ClienteHomeScreen() {
       try {
         await addDoc(collection(db, 'agendamentos'), {
           clienteId: user.uid,
-          clienteNome: "Cliente App", 
+          clienteNome: user.email?.split('@')[0] || "Cliente",
           prestadorId: selectedPrestador.id,
-          servicoNome: selectedService.nome, 
+          servicoNome: selectedService.nome,
           servicoPreco: selectedService.preco,
-          dataAgendamento: new Date(`${selectedDate}T${hora}:00`), 
-          dataString: selectedDate, 
-          horaString: hora,         
+          dataAgendamento: new Date(`${selectedDate}T${hora}:00`),
+          dataString: selectedDate,
+          horaString: hora,
           status: 'pendente'
         });
-        Alert.alert("Solicitação Enviada!", "O prestador analisará seu pedido.");
+        Alert.alert("Sucesso", "Solicitação enviada! O prestador analisará seu pedido.");
         setModalVisible(false);
       } catch (error) {
         console.error(error);
-        Alert.alert("Erro", "Falha ao enviar.");
+        Alert.alert("Erro", "Falha ao enviar solicitação.");
       }
     };
 
@@ -148,86 +165,178 @@ export default function ClienteHomeScreen() {
     });
 
     return (
-      <View style={{flex:1}}>
-        <Text style={styles.title}>Encontrar Profissional</Text>
-        <TextInput style={styles.input} placeholder="Buscar prestador ou serviço..." value={searchText} onChangeText={setSearchText} />
-        
-        <FlatList 
-          data={listaFiltrada}
-          keyExtractor={item => item.id}
-          renderItem={({item}) => (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>{item.nomeAnuncio}</Text>
-              <Text style={{color:'#666', fontStyle:'italic'}}>{item.descricao}</Text>
-              
-              <View style={{marginTop:5, flexDirection:'row', flexWrap:'wrap'}}>
-                {item.meusServicos?.slice(0,3).map((s,i) => (
-                  <Text key={i} style={styles.tagServico}>{s.nome}</Text>
-                ))}
-                {item.meusServicos?.length > 3 && <Text style={{fontSize:10, color:'#999'}}>...</Text>}
-              </View>
+      <View style={{flex: 1}}>
+        <View style={clienteStyles.headerSection}>
+          <Text style={clienteStyles.welcomeTitle}>Encontre Profissionais</Text>
+          <Text style={clienteStyles.welcomeSubtitle}>Agende serviços com os melhores especialistas</Text>
+        </View>
 
-              <TouchableOpacity style={styles.btnAction} onPress={() => iniciarAgendamento(item)}>
-                <Text style={styles.btnText}>Ver Serviços</Text>
+        <View style={clienteStyles.searchContainer}>
+          <View style={clienteStyles.searchInputContainer}>
+            <Image source={lupaIcon} style={clienteStyles.searchIcon} />
+            <TextInput 
+              style={clienteStyles.searchInput}
+              placeholder="Buscar prestador ou serviço..." 
+              placeholderTextColor="#8a8a8a"
+              value={searchText} 
+              onChangeText={setSearchText} 
+            />
+          </View>
+        </View>
+
+        {listaFiltrada.length === 0 ? (
+          <View style={clienteStyles.emptyState}>
+            <Text style={clienteStyles.emptyStateText}>
+              {searchText ? "Nenhum resultado encontrado" : "Carregando profissionais..."}
+            </Text>
+          </View>
+        ) : (
+          <FlatList 
+            data={listaFiltrada}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={clienteStyles.listContainer}
+            renderItem={({item}) => (
+              <View style={clienteStyles.professionalCard}>
+                <View style={clienteStyles.cardHeader}>
+                  <Text style={clienteStyles.cardTitle}>{item.nomeAnuncio}</Text>
+                  <View style={clienteStyles.ratingBadge}>
+                    <Text style={clienteStyles.ratingText}>★ {item.avaliacaoMedia || '5.0'}</Text>
+                  </View>
+                </View>
+                
+                <Text style={clienteStyles.cardDescription}>{item.descricao || "Profissional qualificado"}</Text>
+                
+                <View style={clienteStyles.servicesContainer}>
+                  {item.meusServicos?.slice(0,3).map((s,i) => (
+                    <View key={i} style={clienteStyles.serviceTag}>
+                      <Text style={clienteStyles.serviceTagText}>{s.nome}</Text>
+                    </View>
+                  ))}
+                  {item.meusServicos?.length > 3 && (
+                    <Text style={clienteStyles.moreServices}>+{item.meusServicos.length - 3}</Text>
+                  )}
+                </View>
+
+                <TouchableOpacity 
+                  style={clienteStyles.primaryButton} 
+                  onPress={() => iniciarAgendamento(item)}
+                >
+                  <Text style={clienteStyles.primaryButtonText}>Ver Serviços</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        )}
+
+        <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
+          <View style={clienteStyles.modalContainer}>
+            <View style={clienteStyles.modalHeader}>
+              <Text style={clienteStyles.modalTitle}>
+                {step === 0 ? "Escolha o Serviço" : 
+                 step === 1 ? "Selecione a Data" : 
+                 "Escolha o Horário"}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={clienteStyles.closeButton}>
+                <Text style={clienteStyles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-          )}
-        />
 
-        <Modal visible={modalVisible} animationType="slide">
-          <View style={styles.modalContainer}>
-            <Text style={styles.title}>{selectedPrestador?.nomeAnuncio}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.btnClose}><Text style={{color:'red'}}>Fechar X</Text></TouchableOpacity>
-
-            {step === 0 && (
-              <View>
-                <Text style={styles.label}>Escolha o serviço:</Text>
-                {!selectedPrestador?.meusServicos || selectedPrestador.meusServicos.length === 0 ? (
-                  <Text style={styles.textMsg}>Este prestador ainda não cadastrou serviços.</Text>
-                ) : (
-                  selectedPrestador.meusServicos.map((s, idx) => (
-                    <TouchableOpacity key={idx} style={styles.itemServicoModal} onPress={() => escolherServico(s)}>
-                      <Text style={{fontWeight:'bold', fontSize:16}}>{s.nome}</Text>
-                      <Text style={{color:'green'}}>R$ {s.preco}</Text>
-                    </TouchableOpacity>
-                  ))
+            {selectedPrestador && (
+              <View style={clienteStyles.prestadorInfo}>
+                <Text style={clienteStyles.prestadorName}>{selectedPrestador.nomeAnuncio}</Text>
+                {selectedService && (
+                  <Text style={clienteStyles.selectedService}>Serviço: {selectedService.nome}</Text>
                 )}
               </View>
             )}
 
-            {step === 1 && (
-              <View>
-                <TouchableOpacity onPress={() => setStep(0)}><Text style={{color:'blue', marginBottom:15}}>← Voltar</Text></TouchableOpacity>
-                <Text style={styles.label}>Para: {selectedService?.nome}</Text>
-                <Text style={styles.label}>Escolha a Data:</Text>
-                <Calendar onDayPress={onDayPress} />
-                {loadingSlots && <ActivityIndicator size="large" color="#0056B3" style={{marginTop:20}} />}
-              </View>
-            )}
-
-            {step === 2 && (
-              <View>
-                <TouchableOpacity onPress={() => setStep(1)}><Text style={{color:'blue', marginBottom:15}}>← Voltar</Text></TouchableOpacity>
-                <Text style={styles.label}>Horários Livres em {selectedDate}:</Text>
-                {availableSlots.length === 0 ? <Text style={styles.textMsg}>Agenda lotada.</Text> : (
-                  <View style={styles.grid}>
-                    {availableSlots.map((hora, idx) => (
-                      <TouchableOpacity key={idx} style={styles.slotLivre} onPress={() => solicitarAgendamento(hora)}>
-                        <Text style={{color:'green', fontWeight:'bold'}}>{hora}</Text>
+            <ScrollView style={clienteStyles.modalContent}>
+              {step === 0 && (
+                <View>
+                  {!selectedPrestador?.meusServicos || selectedPrestador.meusServicos.length === 0 ? (
+                    <View style={clienteStyles.emptyServices}>
+                      <Text style={clienteStyles.emptyServicesText}>Este prestador ainda não cadastrou serviços.</Text>
+                    </View>
+                  ) : (
+                    selectedPrestador.meusServicos.map((s, idx) => (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={clienteStyles.serviceItem} 
+                        onPress={() => escolherServico(s)}
+                      >
+                        <View style={clienteStyles.serviceInfo}>
+                          <Text style={clienteStyles.serviceName}>{s.nome}</Text>
+                          <Text style={clienteStyles.serviceDescription}>Serviço profissional</Text>
+                        </View>
+                        <View style={clienteStyles.servicePrice}>
+                          <Text style={clienteStyles.priceText}>R$ {s.preco}</Text>
+                        </View>
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
+                    ))
+                  )}
+                </View>
+              )}
+
+              {step === 1 && (
+                <View>
+                  <TouchableOpacity onPress={() => setStep(0)} style={clienteStyles.backButton}>
+                    <Text style={clienteStyles.backButtonText}>← Voltar</Text>
+                  </TouchableOpacity>
+                  <Text style={clienteStyles.stepTitle}>Selecione uma data disponível</Text>
+                  <Calendar 
+                    onDayPress={onDayPress}
+                    theme={{
+                      selectedDayBackgroundColor: '#0056B3',
+                      todayTextColor: '#0056B3',
+                      arrowColor: '#0056B3',
+                    }}
+                  />
+                  {loadingSlots && (
+                    <View style={clienteStyles.loadingContainer}>
+                      <ActivityIndicator size="large" color="#0056B3" />
+                      <Text style={clienteStyles.loadingText}>Verificando disponibilidade...</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {step === 2 && (
+                <View>
+                  <TouchableOpacity onPress={() => setStep(1)} style={clienteStyles.backButton}>
+                    <Text style={clienteStyles.backButtonText}>← Voltar</Text>
+                  </TouchableOpacity>
+                  <Text style={clienteStyles.stepTitle}>Horários disponíveis em {selectedDate}</Text>
+                  {availableSlots.length === 0 ? (
+                    <View style={clienteStyles.noSlots}>
+                      <Text style={clienteStyles.noSlotsText}>Nenhum horário disponível para esta data.</Text>
+                    </View>
+                  ) : (
+                    <View style={clienteStyles.timeGrid}>
+                      {availableSlots.map((hora, idx) => (
+                        <TouchableOpacity 
+                          key={idx} 
+                          style={clienteStyles.timeSlot} 
+                          onPress={() => solicitarAgendamento(hora)}
+                        >
+                          <Text style={clienteStyles.timeSlotText}>{hora}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
           </View>
         </Modal>
       </View>
     );
   };
 
+  // --- MEUS PEDIDOS (COM FUNCIONALIDADES DO CÓDIGO ORIGINAL) ---
   const RenderMeusPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
+    
     useEffect(() => {
       const q = query(collection(db, 'agendamentos'), where('clienteId', '==', user.uid));
       const unsub = onSnapshot(q, (snap) => {
@@ -238,82 +347,178 @@ export default function ClienteHomeScreen() {
       return () => unsub();
     }, []);
 
-    const getCor = (st) => (st==='confirmado' ? '#D4EDDA' : st==='pendente' ? '#FFF3CD' : '#F8D7DA');
+    const getStatusInfo = (status) => {
+      switch(status) {
+        case 'confirmado':
+          return { color: '#D4EDDA', textColor: '#155724', label: '✓ Confirmado' };
+        case 'pendente':
+          return { color: '#FFF3CD', textColor: '#856404', label: '⏳ Pendente' };
+        case 'recusado':
+          return { color: '#F8D7DA', textColor: '#721C24', label: '❌ Recusado' };
+        default:
+          return { color: '#E2E3E5', textColor: '#383D41', label: status };
+      }
+    };
 
     return (
-      <View>
-        <Text style={styles.title}>Meus Pedidos</Text>
-        <FlatList 
-          data={pedidos}
-          keyExtractor={i => i.id}
-          renderItem={({item}) => (
-            <View style={[styles.card, {backgroundColor: getCor(item.status)}]}>
-              <Text style={styles.cardTitle}>{item.servicoNome}</Text>
-              <Text>R$ {item.servicoPreco}</Text>
-              <Text>{item.dataString} às {item.horaString}</Text>
-              <Text style={{fontWeight:'bold', marginTop:5}}>Status: {item.status.toUpperCase()}</Text>
-            </View>
-          )}
-        />
+      <View style={{flex: 1}}>
+        <View style={clienteStyles.headerSection}>
+          <Text style={clienteStyles.welcomeTitle}>Minhas Reservas</Text>
+          <Text style={clienteStyles.welcomeSubtitle}>Acompanhe seus agendamentos e status</Text>
+        </View>
+
+        {pedidos.length === 0 ? (
+          <View style={clienteStyles.emptyState}>
+            <Text style={clienteStyles.emptyStateText}>Nenhuma reserva encontrada</Text>
+            <Text style={clienteStyles.emptyStateSubtext}>Suas reservas aparecerão aqui</Text>
+          </View>
+        ) : (
+          <FlatList 
+            data={pedidos}
+            keyExtractor={i => i.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={clienteStyles.listContainer}
+            renderItem={({item}) => {
+              const statusInfo = getStatusInfo(item.status);
+              return (
+                <View style={[clienteStyles.appointmentCard, { borderLeftColor: statusInfo.textColor }]}>
+                  <View style={clienteStyles.appointmentHeader}>
+                    <Text style={clienteStyles.appointmentTitle}>{item.servicoNome}</Text>
+                    <View style={[clienteStyles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                      <Text style={[clienteStyles.statusText, { color: statusInfo.textColor }]}>
+                        {statusInfo.label}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={clienteStyles.appointmentPrice}>R$ {item.servicoPreco}</Text>
+                  
+                  <View style={clienteStyles.appointmentDetails}>
+                    <Text style={clienteStyles.detailText}>📅 {item.dataString}</Text>
+                    <Text style={clienteStyles.detailText}>🕒 {item.horaString}</Text>
+                  </View>
+                  
+                  <Text style={clienteStyles.providerText}>Profissional: {item.prestadorId}</Text>
+                </View>
+              );
+            }}
+          />
+        )}
       </View>
     );
   };
 
+  // --- AVALIAR ---
   const RenderAvaliar = () => (
-    <View><Text style={styles.title}>Avaliações</Text><Text style={styles.textMsg}>Disponível após conclusão.</Text></View>
-  );
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.sidebar}>
-        <View style={{width: '100%', alignItems: 'center'}}>
-          <Text style={styles.logoText}>App</Text>
-          {['Busca', 'Pedidos', 'Avaliar', 'Perfil'].map(i => (
-            <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.menuSelected]} onPress={()=>setView(i)}>
-              <Text style={[styles.menuText, view===i && styles.textSelected]}>{i}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* CORRIGIDO: Agora chama handleLogout e não handleLogin */}
-        <TouchableOpacity style={styles.menuLogout} onPress={handleLogout}>
-          <Text style={styles.textLogout}>Sair</Text>
-        </TouchableOpacity>
+    <View style={{flex: 1}}>
+      <View style={clienteStyles.headerSection}>
+        <Text style={clienteStyles.welcomeTitle}>Avaliações</Text>
+        <Text style={clienteStyles.welcomeSubtitle}>Avalie os serviços contratados</Text>
       </View>
-
-      <View style={styles.content}>
-        {view === 'Busca' && <RenderBusca />}
-        {view === 'Pedidos' && <RenderMeusPedidos />}
-        {view === 'Avaliar' && <RenderAvaliar />}
-        {view === 'Perfil' && <View style={{flex:1}}><PerfilClienteScreen /></View>}
+      <View style={clienteStyles.emptyState}>
+        <Text style={clienteStyles.emptyStateText}>Disponível após conclusão dos serviços</Text>
+        <Text style={clienteStyles.emptyStateSubtext}>Você poderá avaliar aqui</Text>
       </View>
     </View>
   );
-}
 
-const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: '25%', backgroundColor: '#6C757D', paddingTop: 40, paddingBottom: 20, alignItems: 'center', justifyContent: 'space-between' },
-  content: { flex: 1, padding: 15, backgroundColor: '#FFF' },
-  logoText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 30 },
-  menuItem: { width: '100%', paddingVertical: 15, alignItems: 'center' },
-  menuSelected: { backgroundColor: '#5a6268', borderLeftWidth: 4, borderLeftColor: '#FFF' },
-  menuText: { color: '#DDD', fontSize: 12 },
-  textSelected: { color: '#FFF', fontWeight: 'bold' },
-  menuLogout: { width: '100%', paddingVertical: 15, alignItems: 'center', backgroundColor: '#DC3545' },
-  textLogout: { color: '#FFF', fontWeight: 'bold' },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15 },
-  input: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, marginBottom: 15 },
-  card: { padding: 15, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#EEE', backgroundColor: '#FFF', elevation: 2 },
-  cardTitle: { fontWeight: 'bold', fontSize: 16 },
-  btnAction: { backgroundColor: '#0056B3', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 },
-  btnText: { color: '#FFF', fontWeight: 'bold' },
-  modalContainer: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: '#FFF' },
-  btnClose: { alignSelf: 'flex-end', padding: 10, marginBottom: 10 },
-  label: { fontSize: 16, fontWeight: 'bold', marginVertical: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  slotLivre: { backgroundColor: '#D4EDDA', padding: 15, margin: 5, borderRadius: 5, borderWidth: 1, borderColor: 'green' },
-  tagServico: { fontSize:10, backgroundColor:'#EEE', paddingHorizontal:6, paddingVertical:2, borderRadius:4, marginRight:4, marginBottom:4, color:'#555' },
-  itemServicoModal: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', flexDirection: 'row', justifyContent: 'space-between' },
-  textMsg: { color: '#888', fontStyle: 'italic', marginTop: 10 }
-});
+  const menuItems = [
+    { key: 'Busca', icon: lupaIcon, label: 'Buscar' },
+    { key: 'Pedidos', icon: pedidosIcon, label: 'Minhas Reservas' },
+    { key: 'Avaliar', icon: avaliarIcon, label: 'Avaliar' },
+    { key: 'Perfil', icon: perfilIcon, label: 'Perfil' }
+  ];
+
+  return (
+    <ImageBackground 
+      source={require('../../assets/Fundo.png')} 
+      style={clienteStyles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={clienteStyles.overlay}>
+        {/* Sidebar Recolhível */}
+        <View style={[
+          clienteStyles.sidebar,
+          isSidebarCollapsed ? clienteStyles.sidebarCollapsed : clienteStyles.sidebarExpanded
+        ]}>
+          <View style={clienteStyles.sidebarHeader}>
+            {!isSidebarCollapsed ? (
+              <>
+                <Text style={clienteStyles.logoText}>AgendaPro</Text>
+                <Text style={clienteStyles.logoSubtext}>Cliente</Text>
+              </>
+            ) : (
+              <Text style={clienteStyles.logoText}>AP</Text>
+            )}
+          </View>
+          
+          <View style={clienteStyles.menuContainer}>
+            {menuItems.map(item => (
+              <TouchableOpacity 
+                key={item.key} 
+                style={[
+                  clienteStyles.menuItem, 
+                  view === item.key && clienteStyles.menuItemSelected
+                ]} 
+                onPress={() => setView(item.key)}
+              >
+                <Image 
+                  source={item.icon} 
+                  style={[
+                    clienteStyles.menuIcon,
+                    view === item.key && clienteStyles.menuIconSelected
+                  ]} 
+                />
+                {!isSidebarCollapsed && (
+                  <Text style={[
+                    clienteStyles.menuText,
+                    view === item.key && clienteStyles.menuTextSelected
+                  ]}>
+                    {item.label}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <View style={clienteStyles.sidebarFooter}>
+            {/* Botão de Logout com a lógica blindada */}
+            <TouchableOpacity 
+              style={clienteStyles.logoutButton} 
+              onPress={handleLogout}
+            >
+              <Image source={sairIcon} style={clienteStyles.menuIcon} />
+              {!isSidebarCollapsed && (
+                <Text style={clienteStyles.logoutButtonText}>Sair</Text>
+              )}
+            </TouchableOpacity>
+            
+            {!isSidebarCollapsed ? (
+              <Text style={clienteStyles.footerText}>AgendaPro v1.0</Text>
+            ) : (
+              <Text style={clienteStyles.footerText}>v1.0</Text>
+            )}
+          </View>
+
+          {/* Botão para recolher/expandir */}
+          <TouchableOpacity 
+            style={clienteStyles.collapseButton} 
+            onPress={toggleSidebar}
+          >
+            <Text style={clienteStyles.collapseButtonText}>
+              {isSidebarCollapsed ? '>' : '<'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Conteúdo Principal */}
+        <View style={clienteStyles.content}>
+          {view === 'Busca' && <RenderBusca />}
+          {view === 'Pedidos' && <RenderMeusPedidos />}
+          {view === 'Avaliar' && <RenderAvaliar />}
+          {view === 'Perfil' && <PerfilClienteScreen />}
+        </View>
+      </View>
+    </ImageBackground>
+  );
+}
