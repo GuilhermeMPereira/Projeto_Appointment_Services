@@ -6,9 +6,9 @@ import {
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { auth, db } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
-import { 
-  doc, updateDoc, collection, query, where, onSnapshot, getDoc, setDoc 
-} from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native'; // IMPORTANTE
+import PerfilPrestadorScreen from './perfil_prestador'; 
 
 LocaleConfig.locales['br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
@@ -20,230 +20,84 @@ LocaleConfig.locales['br'] = {
 LocaleConfig.defaultLocale = 'br';
 
 export default function PrestadorHomeScreen() {
+  const navigation = useNavigation();
   const [view, setView] = useState('Home');
   const user = auth.currentUser;
 
-  const handleLogout = () => signOut(auth).catch(err => console.error(err));
+   // --- LÓGICA DE LOGOUT BLINDADA ---
+    const handleLogout = () => {
+      Alert.alert(
+        "Sair", 
+        "Tem certeza que deseja sair?", 
+        [
+          { text: "Cancelar", style: "cancel" },
+          { 
+            text: "Sair", 
+            onPress: async () => {
+              // 1. Tenta deslogar do Firebase
+              try {
+                await signOut(auth);
+              } catch (error) {
+                console.log("Erro no Firebase (provavelmente AdBlock), mas vamos sair mesmo assim.");
+              } finally {
+  
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              }
+            } 
+          }
+        ]
+      );
+    };
 
-  // --- 1. SOLICITAÇÕES ---
   const RenderSolicitacoes = () => {
     const [pedidos, setPedidos] = useState([]);
-    
-    useEffect(() => {
-      const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid));
-      const unsub = onSnapshot(q, (snap) => {
-        const lista = [];
-        snap.forEach(d => lista.push({id: d.id, ...d.data()}));
-        setPedidos(lista.sort((a,b) => a.status === 'pendente' ? -1 : 1));
-      });
-      return () => unsub();
-    }, []);
-
-    const aceitarPedido = async (id) => {
-      try {
-        await updateDoc(doc(db, 'agendamentos', id), { status: 'confirmado' });
-        Alert.alert("Sucesso", "Serviço confirmado!");
-      } catch (error) {
-        Alert.alert("Erro", "Falha ao aceitar.");
-      }
-    };
-
-    const recusarPedido = async (id) => {
-      await updateDoc(doc(db, 'agendamentos', id), { status: 'recusado' });
-    };
-
-    return (
-      <View style={{flex:1}}>
-        <Text style={styles.title}>Solicitações</Text>
-        <FlatList 
-          data={pedidos}
-          keyExtractor={i => i.id}
-          renderItem={({item}) => (
-            <View style={[styles.card, item.status === 'confirmado' && {borderLeftColor: 'green', borderLeftWidth: 5}]}>
-              <Text style={styles.cardTitle}>{item.clienteNome}</Text>
-              <Text style={{fontWeight:'bold', color:'#0056B3'}}>{item.servicoNome}</Text>
-              <Text>Dia: {item.dataString} às {item.horaString}</Text>
-              <Text style={{marginTop:5}}>Status: {item.status.toUpperCase()}</Text>
-
-              {item.status === 'pendente' && (
-                <View style={styles.rowBtn}>
-                  <TouchableOpacity style={styles.btnAccept} onPress={() => aceitarPedido(item.id)}>
-                    <Text style={styles.btnText}>Aceitar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.btnReject} onPress={() => recusarPedido(item.id)}>
-                    <Text style={styles.btnText}>Recusar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-        />
-      </View>
-    );
+    useEffect(() => { const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid)); const u = onSnapshot(q, (s) => { const l=[]; s.forEach(d=>l.push({id: d.id, ...d.data()})); setPedidos(l.sort((a,b) => a.status === 'pendente' ? -1 : 1)); }); return ()=>u(); }, []);
+    const aceitar = async (id) => { try { await updateDoc(doc(db, 'agendamentos', id), { status: 'confirmado' }); Alert.alert("Sucesso", "Confirmado!"); } catch (e) { Alert.alert("Erro"); } };
+    const recusar = async (id) => await updateDoc(doc(db, 'agendamentos', id), { status: 'recusado' });
+    return (<View style={{flex:1}}><Text style={styles.title}>Solicitações</Text><FlatList data={pedidos} keyExtractor={i=>i.id} renderItem={({item})=><View style={[styles.card, item.status==='confirmado'&&{borderLeftColor:'green', borderLeftWidth:5}]}><Text style={styles.cardTitle}>{item.clienteNome}</Text><Text style={{color:'#0056B3'}}>{item.servicoNome}</Text><Text>{item.dataString} - {item.horaString}</Text><Text>Status: {item.status.toUpperCase()}</Text>{item.status==='pendente'&&( <View style={styles.rowBtn}><TouchableOpacity style={styles.btnAccept} onPress={()=>aceitar(item.id)}><Text style={styles.btnText}>Aceitar</Text></TouchableOpacity><TouchableOpacity style={styles.btnReject} onPress={()=>recusar(item.id)}><Text style={styles.btnText}>Recusar</Text></TouchableOpacity></View> )}</View>}/></View>);
   };
 
-  // --- 2. AGENDA VISUAL ---
   const RenderAgendaVisual = () => {
-    const [marcados, setMarcados] = useState({});
-    const [listaDia, setListaDia] = useState([]);
-    const [diaSelecionado, setDiaSelecionado] = useState('');
-
-    useEffect(() => {
-      const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid), where('status', '==', 'confirmado'));
-      const unsub = onSnapshot(q, (snap) => {
-        const datas = {};
-        snap.forEach(d => { datas[d.data().dataString] = { marked: true, dotColor: '#0056B3' }; });
-        setMarcados(datas);
-      });
-      return () => unsub();
-    }, []);
-
-    const verDetalhesDia = (dateString) => {
-      setDiaSelecionado(dateString);
-      const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid), where('dataString', '==', dateString), where('status', '==', 'confirmado'));
-      onSnapshot(q, (snap) => {
-        const lista = [];
-        snap.forEach(d => lista.push({id: d.id, ...d.data()}));
-        setListaDia(lista.sort((a,b) => a.horaString.localeCompare(b.horaString)));
-      });
-    };
-
-    return (
-      <ScrollView>
-        <Text style={styles.title}>Agenda Confirmada</Text>
-        <Calendar markedDates={{...marcados, [diaSelecionado]: {selected: true, selectedColor: '#0056B3'}}} onDayPress={(day) => verDetalhesDia(day.dateString)} />
-        {diaSelecionado && (
-          <View style={{marginTop: 20}}>
-            <Text style={{fontWeight:'bold'}}>Serviços em {diaSelecionado}:</Text>
-            {listaDia.map(item => (
-              <View key={item.id} style={styles.itemAgenda}>
-                <Text style={{fontWeight:'bold', color:'#0056B3'}}>{item.horaString}</Text>
-                <Text style={{marginLeft: 15}}>{item.clienteNome} - {item.servicoNome}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    );
+    const [marcados, setMarcados] = useState({}); const [lista, setLista] = useState([]); const [dia, setDia] = useState('');
+    useEffect(() => { const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid), where('status', '==', 'confirmado')); const u = onSnapshot(q, (s) => { const d={}; s.forEach(x=>{d[x.data().dataString]={marked:true, dotColor:'#0056B3'}}); setMarcados(d); }); return ()=>u(); }, []);
+    const verDia = (ds) => { setDia(ds); const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid), where('dataString', '==', ds), where('status', '==', 'confirmado')); onSnapshot(q, (s)=>{ const l=[]; s.forEach(x=>l.push({id:x.id, ...x.data()})); setLista(l.sort((a,b)=>a.horaString.localeCompare(b.horaString))); }); };
+    return (<ScrollView><Text style={styles.title}>Agenda</Text><Calendar markedDates={{...marcados, [dia]:{selected:true, selectedColor:'#0056B3'}}} onDayPress={(d)=>verDia(d.dateString)} />{dia && <View style={{marginTop:20}}><Text>Serviços em {dia}:</Text>{lista.map(i=><View key={i.id} style={styles.itemAgenda}><Text style={{fontWeight:'bold', color:'#0056B3'}}>{i.horaString}</Text><Text style={{marginLeft:10}}>{i.clienteNome} - {i.servicoNome}</Text></View>)}</View>}</ScrollView>);
   };
 
-  // --- 3. MEU SERVIÇO (AGORA COM LISTA) ---
   const RenderMeuServico = () => {
-    const [nomeAnuncio, setNomeAnuncio] = useState(''); // Nome da Loja/Prestador
-    const [descricao, setDescricao] = useState('');     // Descrição geral
-    const [meusServicos, setMeusServicos] = useState([]); // Array de serviços
-
-    // Inputs temporários para adicionar novo serviço
-    const [novoServico, setNovoServico] = useState('');
-    const [novoPreco, setNovoPreco] = useState('');
-
-    useEffect(() => {
-      getDoc(doc(db, 'prestadores', user.uid)).then(s => {
-        if(s.exists()) {
-          const d = s.data();
-          setNomeAnuncio(d.nomeAnuncio || '');
-          setDescricao(d.descricao || '');
-          setMeusServicos(d.meusServicos || []);
-        }
-      });
-    }, []);
-
-    const adicionarServicoNaLista = () => {
-      if (!novoServico.trim()) {
-        Alert.alert("Erro", "Digite o nome do serviço");
-        return;
-      }
-      const item = { nome: novoServico, preco: novoPreco };
-      setMeusServicos([...meusServicos, item]);
-      setNovoServico('');
-      setNovoPreco('');
-    };
-
-    const removerServico = (index) => {
-      const novaLista = [...meusServicos];
-      novaLista.splice(index, 1);
-      setMeusServicos(novaLista);
-    };
-
-    const salvarTudo = async () => {
-      await setDoc(doc(db, 'prestadores', user.uid), {
-        nomeAnuncio,
-        descricao,
-        meusServicos // Salva o array completo
-      }, {merge: true});
-      Alert.alert("Sucesso", "Serviços atualizados!");
-    };
-
-    return (
-      <ScrollView>
-        <Text style={styles.title}>Perfil do Negócio</Text>
-        <Text style={styles.label}>Nome do Negócio/Profissional:</Text>
-        <TextInput style={styles.input} value={nomeAnuncio} onChangeText={setNomeAnuncio} placeholder="Ex: Barbearia do Zé" />
-        
-        <Text style={styles.label}>Descrição Geral:</Text>
-        <TextInput style={styles.input} value={descricao} onChangeText={setDescricao} placeholder="Ex: Especialista em cortes clássicos" />
-
-        <Text style={[styles.title, {marginTop: 30}]}>Meus Serviços Oferecidos</Text>
-        
-        {/* FORMULÁRIO PARA ADICIONAR SERVIÇO */}
-        <View style={styles.addArea}>
-          <TextInput 
-            style={[styles.input, {flex: 2, marginRight: 5}]} 
-            placeholder="Nome (Ex: Corte de Cabelo)" 
-            value={novoServico} 
-            onChangeText={setNovoServico} 
-          />
-          <TextInput 
-            style={[styles.input, {flex: 1, marginRight: 5}]} 
-            placeholder="R$ 0,00" 
-            value={novoPreco} 
-            onChangeText={setNovoPreco} 
-            keyboardType="numeric"
-          />
-          <TouchableOpacity style={styles.btnAdd} onPress={adicionarServicoNaLista}>
-            <Text style={{color:'#FFF', fontWeight:'bold'}}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* LISTA DE SERVIÇOS CADASTRADOS */}
-        {meusServicos.map((item, index) => (
-          <View key={index} style={styles.itemServico}>
-            <View>
-              <Text style={{fontWeight:'bold'}}>{item.nome}</Text>
-              <Text style={{color:'green'}}>R$ {item.preco}</Text>
-            </View>
-            <TouchableOpacity onPress={() => removerServico(index)}>
-              <Text style={{color:'red'}}>Excluir</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.btnSalvar} onPress={salvarTudo}>
-          <Text style={styles.btnText}>Salvar Tudo</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    );
+    const [nome, setNome] = useState(''); const [desc, setDesc] = useState(''); const [list, setList] = useState([]); const [novo, setNovo] = useState(''); const [preco, setPreco] = useState('');
+    useEffect(()=>{ getDoc(doc(db, 'prestadores', user.uid)).then(s=>{ if(s.exists()){ const d=s.data(); setNome(d.nomeAnuncio||''); setDesc(d.descricao||''); setList(d.meusServicos||[]); }}); }, []);
+    const add = () => { if(!novo) return; setList([...list, {nome:novo, preco}]); setNovo(''); setPreco(''); };
+    const save = async () => { await setDoc(doc(db, 'prestadores', user.uid), { nomeAnuncio:nome, descricao:desc, meusServicos:list }, {merge:true}); Alert.alert("Salvo!"); };
+    return (<ScrollView><Text style={styles.title}>Serviços</Text><Text style={styles.label}>Negócio:</Text><TextInput style={styles.input} value={nome} onChangeText={setNome}/><Text style={styles.label}>Desc:</Text><TextInput style={styles.input} value={desc} onChangeText={setDesc}/><View style={styles.addArea}><TextInput style={[styles.input, {flex:2}]} placeholder="Serviço" value={novo} onChangeText={setNovo}/><TextInput style={[styles.input, {flex:1}]} placeholder="$" value={preco} onChangeText={setPreco}/><TouchableOpacity style={styles.btnAdd} onPress={add}><Text style={{color:'#FFF'}}>+</Text></TouchableOpacity></View>{list.map((l,i)=><View key={i} style={styles.itemServico}><Text>{l.nome} - R$ {l.preco}</Text><TouchableOpacity onPress={()=>{const n=[...list]; n.splice(i,1); setList(n)}}><Text style={{color:'red'}}>X</Text></TouchableOpacity></View>)}<TouchableOpacity style={styles.btnSalvar} onPress={save}><Text style={styles.btnText}>Salvar</Text></TouchableOpacity></ScrollView>);
   };
-
-  const RenderPerfil = () => (
-    <View style={{alignItems:'center', paddingTop:50}}><Text style={styles.title}>Perfil</Text><Text>{user.email}</Text><TouchableOpacity style={styles.btnReject} onPress={handleLogout}><Text style={styles.btnText}>Sair</Text></TouchableOpacity></View>
-  );
 
   return (
     <View style={styles.container}>
       <View style={styles.sidebar}>
-        <Text style={styles.logoText}>Prestador</Text>
-        {['Home', 'Agenda', 'Serviço', 'Perfil'].map(i => (
-          <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.selected]} onPress={()=>setView(i)}>
-            <Text style={styles.menuText}>{i}</Text>
-          </TouchableOpacity>
-        ))}
+        <View style={{width:'100%', alignItems:'center'}}>
+          <Text style={styles.logoText}>Prestador</Text>
+          {['Home', 'Agenda', 'Serviço', 'Perfil'].map(i => (
+            <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.selected]} onPress={()=>setView(i)}>
+              <Text style={styles.menuText}>{i}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        
+        {/* BOTÃO SAIR */}
+        <TouchableOpacity style={styles.menuLogout} onPress={handleLogout}>
+          <Text style={styles.textLogout}>Sair</Text>
+        </TouchableOpacity>
       </View>
+
       <View style={styles.content}>
         {view==='Home' && <RenderSolicitacoes />}
         {view==='Agenda' && <RenderAgendaVisual />}
         {view==='Serviço' && <RenderMeuServico />}
-        {view==='Perfil' && <RenderPerfil />}
+        {view==='Perfil' && <View style={{flex:1}}><PerfilPrestadorScreen /></View>}
       </View>
     </View>
   );
@@ -251,12 +105,15 @@ export default function PrestadorHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: '28%', backgroundColor: '#0056B3', paddingTop: 40, alignItems: 'center' },
+  sidebar: { width: '28%', backgroundColor: '#0056B3', paddingTop: 40, paddingBottom: 20, alignItems: 'center', justifyContent: 'space-between' },
   content: { flex: 1, padding: 15, backgroundColor: '#F8F9FA' },
   logoText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 30 },
   menuItem: { width: '100%', paddingVertical: 15, alignItems: 'center' },
   selected: { backgroundColor: '#004494', borderLeftWidth: 4, borderLeftColor: '#FFF' },
   menuText: { color: '#B0C4DE', fontSize: 13, textAlign: 'center' },
+  menuLogout: { width: '100%', paddingVertical: 15, alignItems: 'center', backgroundColor: '#DC3545' },
+  textLogout: { color: '#FFF', fontWeight: 'bold' },
+  
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   label: { fontSize: 14, color: '#555', marginTop: 10 },
   input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, marginTop: 5 },
@@ -268,8 +125,6 @@ const styles = StyleSheet.create({
   btnAccept: { backgroundColor: '#28A745', padding: 8, borderRadius: 5, width: '48%', alignItems: 'center' },
   btnReject: { backgroundColor: '#DC3545', padding: 8, borderRadius: 5, width: '48%', alignItems: 'center' },
   itemAgenda: { flexDirection: 'row', backgroundColor: '#E9ECEF', padding: 10, borderRadius: 5, marginBottom: 5, alignItems: 'center' },
-  
-  
   addArea: { flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 20 },
   btnAdd: { backgroundColor: '#0056B3', width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   itemServico: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: '#FFF', borderRadius: 8, marginBottom: 5, borderWidth: 1, borderColor: '#EEE' }

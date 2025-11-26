@@ -1,3 +1,4 @@
+// src/screens/index_cliente.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
@@ -6,9 +7,9 @@ import {
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { auth, db } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
-import { 
-  collection, getDocs, addDoc, query, where, onSnapshot 
-} from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native'; 
+import PerfilClienteScreen from './perfil_cliente'; 
 
 LocaleConfig.locales['br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
@@ -22,21 +23,46 @@ LocaleConfig.defaultLocale = 'br';
 const HORARIOS_PADRAO = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
 export default function ClienteHomeScreen() {
+  const navigation = useNavigation(); 
   const [view, setView] = useState('Busca');
   const user = auth.currentUser;
 
-  const handleLogout = () => signOut(auth).catch(err => console.error(err));
+  // --- LÓGICA DE LOGOUT BLINDADA ---
+  const handleLogout = () => {
+    Alert.alert(
+      "Sair", 
+      "Tem certeza que deseja sair?", 
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Sair", 
+          onPress: async () => {
+            // 1. Tenta deslogar do Firebase
+            try {
+              await signOut(auth);
+            } catch (error) {
+              console.log("Erro no Firebase (provavelmente AdBlock), mas vamos sair mesmo assim.");
+            } finally {
 
-  // --- 1. BUSCA & AGENDAMENTO ---
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+  // --- SUB-TELAS ---
   const RenderBusca = () => {
     const [prestadores, setPrestadores] = useState([]);
     const [searchText, setSearchText] = useState('');
-    
-    // Estados do Agendamento
     const [selectedPrestador, setSelectedPrestador] = useState(null);
-    const [selectedService, setSelectedService] = useState(null); // NOVO: Serviço escolhido
+    const [selectedService, setSelectedService] = useState(null); 
     const [modalVisible, setModalVisible] = useState(false);
-    const [step, setStep] = useState(0); // 0: Escolher Serviço, 1: Data, 2: Hora
+    const [step, setStep] = useState(0); 
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
@@ -60,7 +86,7 @@ export default function ClienteHomeScreen() {
 
     const escolherServico = (servico) => {
       setSelectedService(servico);
-      setStep(1); // Vai para Data
+      setStep(1); 
     };
 
     const onDayPress = async (day) => {
@@ -99,7 +125,6 @@ export default function ClienteHomeScreen() {
           clienteId: user.uid,
           clienteNome: "Cliente App", 
           prestadorId: selectedPrestador.id,
-          // AQUI SALVAMOS O NOME DO SERVIÇO ESCOLHIDO
           servicoNome: selectedService.nome, 
           servicoPreco: selectedService.preco,
           dataAgendamento: new Date(`${selectedDate}T${hora}:00`), 
@@ -115,7 +140,6 @@ export default function ClienteHomeScreen() {
       }
     };
 
-    // Filtro mais inteligente: Procura no nome do prestador OU nos serviços dele
     const listaFiltrada = prestadores.filter(p => {
       const searchLower = searchText.toLowerCase();
       const nomeMatch = p.nomeAnuncio?.toLowerCase().includes(searchLower);
@@ -136,7 +160,6 @@ export default function ClienteHomeScreen() {
               <Text style={styles.cardTitle}>{item.nomeAnuncio}</Text>
               <Text style={{color:'#666', fontStyle:'italic'}}>{item.descricao}</Text>
               
-              {/* Mostra um resumo dos serviços */}
               <View style={{marginTop:5, flexDirection:'row', flexWrap:'wrap'}}>
                 {item.meusServicos?.slice(0,3).map((s,i) => (
                   <Text key={i} style={styles.tagServico}>{s.nome}</Text>
@@ -156,7 +179,6 @@ export default function ClienteHomeScreen() {
             <Text style={styles.title}>{selectedPrestador?.nomeAnuncio}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.btnClose}><Text style={{color:'red'}}>Fechar X</Text></TouchableOpacity>
 
-            {/* PASSO 0: ESCOLHER SERVIÇO */}
             {step === 0 && (
               <View>
                 <Text style={styles.label}>Escolha o serviço:</Text>
@@ -173,7 +195,6 @@ export default function ClienteHomeScreen() {
               </View>
             )}
 
-            {/* PASSO 1: DATA */}
             {step === 1 && (
               <View>
                 <TouchableOpacity onPress={() => setStep(0)}><Text style={{color:'blue', marginBottom:15}}>← Voltar</Text></TouchableOpacity>
@@ -184,7 +205,6 @@ export default function ClienteHomeScreen() {
               </View>
             )}
 
-            {/* PASSO 2: HORA */}
             {step === 2 && (
               <View>
                 <TouchableOpacity onPress={() => setStep(1)}><Text style={{color:'blue', marginBottom:15}}>← Voltar</Text></TouchableOpacity>
@@ -206,7 +226,6 @@ export default function ClienteHomeScreen() {
     );
   };
 
-  // --- 2. PEDIDOS ---
   const RenderMeusPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
     useEffect(() => {
@@ -244,25 +263,29 @@ export default function ClienteHomeScreen() {
     <View><Text style={styles.title}>Avaliações</Text><Text style={styles.textMsg}>Disponível após conclusão.</Text></View>
   );
 
-  const RenderPerfil = () => (
-    <View><Text style={styles.title}>Perfil</Text><Text>{user.email}</Text><TouchableOpacity style={styles.btnDanger} onPress={handleLogout}><Text style={styles.btnText}>Sair</Text></TouchableOpacity></View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.sidebar}>
-        <Text style={styles.logoText}>App</Text>
-        {['Busca', 'Pedidos', 'Avaliar', 'Perfil'].map(i => (
-          <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.menuSelected]} onPress={()=>setView(i)}>
-            <Text style={[styles.menuText, view===i && styles.textSelected]}>{i}</Text>
-          </TouchableOpacity>
-        ))}
+        <View style={{width: '100%', alignItems: 'center'}}>
+          <Text style={styles.logoText}>App</Text>
+          {['Busca', 'Pedidos', 'Avaliar', 'Perfil'].map(i => (
+            <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.menuSelected]} onPress={()=>setView(i)}>
+              <Text style={[styles.menuText, view===i && styles.textSelected]}>{i}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* CORRIGIDO: Agora chama handleLogout e não handleLogin */}
+        <TouchableOpacity style={styles.menuLogout} onPress={handleLogout}>
+          <Text style={styles.textLogout}>Sair</Text>
+        </TouchableOpacity>
       </View>
+
       <View style={styles.content}>
         {view === 'Busca' && <RenderBusca />}
         {view === 'Pedidos' && <RenderMeusPedidos />}
         {view === 'Avaliar' && <RenderAvaliar />}
-        {view === 'Perfil' && <RenderPerfil />}
+        {view === 'Perfil' && <View style={{flex:1}}><PerfilClienteScreen /></View>}
       </View>
     </View>
   );
@@ -270,28 +293,27 @@ export default function ClienteHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: '25%', backgroundColor: '#6C757D', paddingTop: 40, alignItems: 'center' },
+  sidebar: { width: '25%', backgroundColor: '#6C757D', paddingTop: 40, paddingBottom: 20, alignItems: 'center', justifyContent: 'space-between' },
   content: { flex: 1, padding: 15, backgroundColor: '#FFF' },
   logoText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 30 },
   menuItem: { width: '100%', paddingVertical: 15, alignItems: 'center' },
   menuSelected: { backgroundColor: '#5a6268', borderLeftWidth: 4, borderLeftColor: '#FFF' },
   menuText: { color: '#DDD', fontSize: 12 },
   textSelected: { color: '#FFF', fontWeight: 'bold' },
+  menuLogout: { width: '100%', paddingVertical: 15, alignItems: 'center', backgroundColor: '#DC3545' },
+  textLogout: { color: '#FFF', fontWeight: 'bold' },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15 },
   input: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, marginBottom: 15 },
   card: { padding: 15, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#EEE', backgroundColor: '#FFF', elevation: 2 },
   cardTitle: { fontWeight: 'bold', fontSize: 16 },
   btnAction: { backgroundColor: '#0056B3', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 },
   btnText: { color: '#FFF', fontWeight: 'bold' },
-  btnDanger: { backgroundColor: '#DC3545', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 20 },
   modalContainer: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: '#FFF' },
   btnClose: { alignSelf: 'flex-end', padding: 10, marginBottom: 10 },
   label: { fontSize: 16, fontWeight: 'bold', marginVertical: 10 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   slotLivre: { backgroundColor: '#D4EDDA', padding: 15, margin: 5, borderRadius: 5, borderWidth: 1, borderColor: 'green' },
-  textMsg: { color: '#888', fontStyle: 'italic', marginTop: 10 },
-  
-
   tagServico: { fontSize:10, backgroundColor:'#EEE', paddingHorizontal:6, paddingVertical:2, borderRadius:4, marginRight:4, marginBottom:4, color:'#555' },
-  itemServicoModal: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', flexDirection: 'row', justifyContent: 'space-between' }
+  itemServicoModal: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', flexDirection: 'row', justifyContent: 'space-between' },
+  textMsg: { color: '#888', fontStyle: 'italic', marginTop: 10 }
 });
