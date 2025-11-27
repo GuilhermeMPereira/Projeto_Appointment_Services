@@ -60,7 +60,7 @@ export default function LoginScreen({ navigation }) {
             <View style={loginStyles.overlay}>
               <View style={loginStyles.formContainer}>
                 <View style={loginStyles.header}>
-                  <Text style={loginStyles.title}>Bem-vindo de volta</Text>
+                  <Text style={loginStyles.title}>Acessar</Text>
                   <Text style={loginStyles.subtitle}>Entre na sua conta para continuar</Text>
                 </View>
                 

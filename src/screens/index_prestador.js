@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  TextInput, Alert, FlatList, ActivityIndicator, Platform // <--- Importado Platform
+  View, Text, TouchableOpacity, ScrollView, 
+  TextInput, Alert, FlatList, ActivityIndicator, Platform,
+  ImageBackground, Image 
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { auth, db } from '../firebase/firebase';
@@ -9,6 +10,15 @@ import { signOut } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import PerfilPrestadorScreen from './perfil_prestador'; 
+import { prestadorStyles } from '../styles/prestadorStyles'; // <--- NOVO IMPORT
+
+// Importação de imagens (Usando as mesmas do cliente onde possível ou placeholders)
+// Certifique-se de que essas imagens existem na pasta assets
+const homeIcon = require('../../assets/pedidos.png'); // Reutilizando pedidosIcon para Home
+const agendaIcon = require('../../assets/lupa.jpg'); // Reutilizando lupa para Agenda
+const servicoIcon = require('../../assets/avaliar.jpg'); // Reutilizando avaliar para Serviço
+const perfilIcon = require('../../assets/perfil.png');
+const sairIcon = require('../../assets/sair.png');
 
 LocaleConfig.locales['br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
@@ -19,7 +29,7 @@ LocaleConfig.locales['br'] = {
 };
 LocaleConfig.defaultLocale = 'br';
 
-// --- COMPONENTES EXTRAÍDOS ---
+// --- COMPONENTES ---
 
 const RenderSolicitacoes = ({ user }) => {
   const [pedidos, setPedidos] = useState([]);
@@ -47,25 +57,42 @@ const RenderSolicitacoes = ({ user }) => {
   
   const recusar = async (id) => await updateDoc(doc(db, 'agendamentos', id), { status: 'recusado' });
 
+  const getBorderColor = (status) => {
+      switch(status){
+          case 'confirmado': return '#28A745';
+          case 'recusado': return '#DC3545';
+          default: return '#FFC107'; // Pendente (Amarelo)
+      }
+  };
+
   return (
     <View style={{flex:1}}>
-      <Text style={styles.title}>Solicitações</Text>
+      <View style={prestadorStyles.headerSection}>
+        <Text style={prestadorStyles.pageTitle}>Solicitações</Text>
+        <Text style={prestadorStyles.pageSubtitle}>Gerencie seus pedidos de agendamento</Text>
+      </View>
+      
       <FlatList 
         data={pedidos} 
         keyExtractor={i=>i.id} 
+        contentContainerStyle={{paddingBottom: 20}}
         renderItem={({item}) => (
-          <View style={[styles.card, item.status==='confirmado'&&{borderLeftColor:'green', borderLeftWidth:5}]}>
-            <Text style={styles.cardTitle}>{item.clienteNome}</Text>
-            <Text style={{color:'#0056B3'}}>{item.servicoNome}</Text>
-            <Text>{item.dataString} - {item.horaString}</Text>
-            <Text>Status: {item.status.toUpperCase()}</Text>
+          <View style={[prestadorStyles.card, {borderLeftColor: getBorderColor(item.status)}]}>
+            <View style={{flexDirection:'row', justifyContent:'space-between'}}>
+                <Text style={prestadorStyles.cardTitle}>{item.clienteNome}</Text>
+                <Text style={{fontWeight:'bold', color: getBorderColor(item.status)}}>{item.status.toUpperCase()}</Text>
+            </View>
+            <Text style={prestadorStyles.cardSubtitle}>{item.servicoNome}</Text>
+            <Text style={prestadorStyles.cardText}>📅 {item.dataString}</Text>
+            <Text style={prestadorStyles.cardText}>🕒 {item.horaString}</Text>
+            
             {item.status==='pendente'&&( 
-              <View style={styles.rowBtn}>
-                <TouchableOpacity style={styles.btnAccept} onPress={()=>aceitar(item.id)}>
-                  <Text style={styles.btnText}>Aceitar</Text>
+              <View style={prestadorStyles.rowBtn}>
+                <TouchableOpacity style={prestadorStyles.btnAccept} onPress={()=>aceitar(item.id)}>
+                  <Text style={prestadorStyles.btnText}>✓ Aceitar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btnReject} onPress={()=>recusar(item.id)}>
-                  <Text style={styles.btnText}>Recusar</Text>
+                <TouchableOpacity style={prestadorStyles.btnReject} onPress={()=>recusar(item.id)}>
+                  <Text style={prestadorStyles.btnText}>✕ Recusar</Text>
                 </TouchableOpacity>
               </View> 
             )}
@@ -102,21 +129,40 @@ const RenderAgendaVisual = ({ user }) => {
   };
 
   return (
-    <ScrollView>
-      <Text style={styles.title}>Agenda</Text>
-      <Calendar 
-        markedDates={{...marcados, [dia]:{selected:true, selectedColor:'#0056B3'}}} 
-        onDayPress={(d)=>verDia(d.dateString)} 
-      />
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={prestadorStyles.headerSection}>
+        <Text style={prestadorStyles.pageTitle}>Agenda</Text>
+        <Text style={prestadorStyles.pageSubtitle}>Visualize seus compromissos confirmados</Text>
+      </View>
+
+      <View style={{backgroundColor: '#FFF', borderRadius: 16, padding: 10, elevation: 4}}>
+          <Calendar 
+            markedDates={{...marcados, [dia]:{selected:true, selectedColor:'#0056B3'}}} 
+            onDayPress={(d)=>verDia(d.dateString)} 
+            theme={{
+                todayTextColor: '#0056B3',
+                arrowColor: '#0056B3',
+                selectedDayBackgroundColor: '#0056B3'
+            }}
+          />
+      </View>
+
       {dia && (
         <View style={{marginTop:20}}>
-          <Text>Serviços em {dia}:</Text>
-          {lista.map(i=>(
-            <View key={i.id} style={styles.itemAgenda}>
-              <Text style={{fontWeight:'bold', color:'#0056B3'}}>{i.horaString}</Text>
-              <Text style={{marginLeft:10}}>{i.clienteNome} - {i.servicoNome}</Text>
-            </View>
-          ))}
+          <Text style={[prestadorStyles.cardTitle, {marginBottom: 15}]}>Compromissos em {dia}:</Text>
+          {lista.length === 0 ? (
+              <Text style={{color:'#6C757D', fontStyle:'italic'}}>Nenhum serviço confirmado para hoje.</Text>
+          ) : (
+            lista.map(i=>(
+                <View key={i.id} style={prestadorStyles.agendaItemContainer}>
+                <Text style={prestadorStyles.agendaTime}>{i.horaString}</Text>
+                <View>
+                    <Text style={{fontWeight:'bold', color:'#343A40'}}>{i.clienteNome}</Text>
+                    <Text style={{color:'#6C757D'}}>{i.servicoNome}</Text>
+                </View>
+                </View>
+            ))
+          )}
         </View>
       )}
     </ScrollView>
@@ -144,29 +190,56 @@ const RenderMeuServico = ({ user }) => {
   const add = () => { if(!novo) return; setList([...list, {nome:novo, preco}]); setNovo(''); setPreco(''); };
   const save = async () => { 
       await setDoc(doc(db, 'prestadores', user.uid), { nomeAnuncio:nome, descricao:desc, meusServicos:list }, {merge:true}); 
-      if (Platform.OS === 'web') window.alert("Salvo!");
-      else Alert.alert("Salvo!"); 
+      if (Platform.OS === 'web') window.alert("Dados salvos com sucesso!");
+      else Alert.alert("Salvo", "Seus serviços foram atualizados."); 
   };
   
   return (
-    <ScrollView>
-      <Text style={styles.title}>Serviços</Text>
-      <Text style={styles.label}>Negócio:</Text>
-      <TextInput style={styles.input} value={nome} onChangeText={setNome}/>
-      <Text style={styles.label}>Desc:</Text>
-      <TextInput style={styles.input} value={desc} onChangeText={setDesc}/>
-      <View style={styles.addArea}>
-        <TextInput style={[styles.input, {flex:2}]} placeholder="Serviço" value={novo} onChangeText={setNovo}/>
-        <TextInput style={[styles.input, {flex:1}]} placeholder="$" value={preco} onChangeText={setPreco}/>
-        <TouchableOpacity style={styles.btnAdd} onPress={add}><Text style={{color:'#FFF'}}>+</Text></TouchableOpacity>
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={prestadorStyles.headerSection}>
+        <Text style={prestadorStyles.pageTitle}>Meus Serviços</Text>
+        <Text style={prestadorStyles.pageSubtitle}>Configure seu perfil e lista de preços</Text>
       </View>
-      {list.map((l,i)=>(
-        <View key={i} style={styles.itemServico}>
-          <Text>{l.nome} - R$ {l.preco}</Text>
-          <TouchableOpacity onPress={()=>{const n=[...list]; n.splice(i,1); setList(n)}}><Text style={{color:'red'}}>X</Text></TouchableOpacity>
+
+      <View style={prestadorStyles.card}>
+        <Text style={[prestadorStyles.cardTitle, {marginBottom: 15}]}>Informações do Negócio</Text>
+        
+        <Text style={prestadorStyles.label}>Nome do Profissional / Empresa:</Text>
+        <TextInput style={prestadorStyles.input} value={nome} onChangeText={setNome} placeholder="Ex: João Eletricista"/>
+        
+        <Text style={prestadorStyles.label}>Descrição / Bio:</Text>
+        <TextInput style={[prestadorStyles.input, {height: 80, textAlignVertical: 'top'}]} multiline value={desc} onChangeText={setDesc} placeholder="Conte um pouco sobre sua experiência..."/>
+      </View>
+
+      <View style={prestadorStyles.card}>
+        <Text style={[prestadorStyles.cardTitle]}>Catálogo de Serviços</Text>
+        
+        <View style={prestadorStyles.addArea}>
+            <View style={{flex: 1}}>
+                <TextInput style={[prestadorStyles.input, {marginBottom: 5}]} placeholder="Nome do Serviço" value={novo} onChangeText={setNovo}/>
+                <TextInput style={prestadorStyles.input} placeholder="Preço (R$)" value={preco} onChangeText={setPreco} keyboardType="numeric"/>
+            </View>
+            <TouchableOpacity style={prestadorStyles.btnAdd} onPress={add}>
+                <Text style={{color:'#FFF', fontSize: 24, fontWeight: 'bold'}}>+</Text>
+            </TouchableOpacity>
         </View>
-      ))}
-      <TouchableOpacity style={styles.btnSalvar} onPress={save}><Text style={styles.btnText}>Salvar</Text></TouchableOpacity>
+
+        {list.map((l,i)=>(
+            <View key={i} style={prestadorStyles.itemServico}>
+            <View>
+                <Text style={{fontWeight: 'bold', fontSize: 16, color: '#343A40'}}>{l.nome}</Text>
+                <Text style={{color: '#28A745', fontWeight: 'bold'}}>R$ {l.preco}</Text>
+            </View>
+            <TouchableOpacity onPress={()=>{const n=[...list]; n.splice(i,1); setList(n)}}>
+                <Text style={{color:'#DC3545', fontWeight:'bold', fontSize: 12}}>REMOVER</Text>
+            </TouchableOpacity>
+            </View>
+        ))}
+      </View>
+
+      <TouchableOpacity style={prestadorStyles.btnSalvar} onPress={save}>
+        <Text style={prestadorStyles.btnText}>SALVAR ALTERAÇÕES</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -174,90 +247,120 @@ const RenderMeuServico = ({ user }) => {
 export default function PrestadorHomeScreen() {
   const navigation = useNavigation();
   const [view, setView] = useState('Home');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Estado para sidebar retrátil
   const user = auth.currentUser;
 
-  // --- LOGOUT HÍBRIDO ---
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm("Tem certeza que deseja sair?");
       if (confirmed) {
-        try {
-          await signOut(auth);
-        } catch (error) {
-          console.error("Erro ao sair:", error);
-        }
+        try { await signOut(auth); } catch (error) { console.error("Erro ao sair:", error); }
       }
     } else {
-      Alert.alert(
-        "Sair", 
-        "Tem certeza que deseja sair?", 
-        [
-          { text: "Cancelar", style: "cancel" },
-          { 
-            text: "Sair", 
-            onPress: async () => {
-              try {
-                await signOut(auth);
-              } catch (error) {
-                console.log("Erro ao sair:", error);
-              }
-            } 
-          }
-        ]
-      );
+      Alert.alert("Sair", "Tem certeza que deseja sair?", [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Sair", onPress: async () => { try { await signOut(auth); } catch (error) { console.log("Erro ao sair:", error); } } }
+      ]);
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.sidebar}>
-        <View style={{width:'100%', alignItems:'center'}}>
-          <Text style={styles.logoText}>Prestador</Text>
-          {['Home', 'Agenda', 'Serviço', 'Perfil'].map(i => (
-            <TouchableOpacity key={i} style={[styles.menuItem, view===i && styles.selected]} onPress={()=>setView(i)}>
-              <Text style={styles.menuText}>{i}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        
-        <TouchableOpacity style={styles.menuLogout} onPress={handleLogout}>
-          <Text style={styles.textLogout}>Sair</Text>
-        </TouchableOpacity>
-      </View>
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
 
-      <View style={styles.content}>
-        {view==='Home' && <RenderSolicitacoes user={user} />}
-        {view==='Agenda' && <RenderAgendaVisual user={user} />}
-        {view==='Serviço' && <RenderMeuServico user={user} />}
-        {view==='Perfil' && <View style={{flex:1}}><PerfilPrestadorScreen /></View>}
-      </View>
-    </View>
+  const menuItems = [
+    { key: 'Home', icon: homeIcon, label: 'Solicitações' },
+    { key: 'Agenda', icon: agendaIcon, label: 'Agenda' },
+    { key: 'Serviço', icon: servicoIcon, label: 'Serviços' },
+    { key: 'Perfil', icon: perfilIcon, label: 'Perfil' }
+  ];
+
+  return (
+    <ImageBackground 
+      source={require('../../assets/Fundo.png')} 
+      style={prestadorStyles.backgroundImage}
+      resizeMode="cover"
+    >
+        <View style={prestadorStyles.overlay}>
+            {/* SIDEBAR */}
+            <View style={[
+                prestadorStyles.sidebar,
+                isSidebarCollapsed ? prestadorStyles.sidebarCollapsed : prestadorStyles.sidebarExpanded
+            ]}>
+                <View style={prestadorStyles.sidebarHeader}>
+                    {!isSidebarCollapsed ? (
+                    <>
+                        <Text style={prestadorStyles.logoText}>AgendaPro</Text>
+                        <Text style={prestadorStyles.logoSubtext}>Prestador</Text>
+                    </>
+                    ) : (
+                    <Text style={prestadorStyles.logoText}>AP</Text>
+                    )}
+                </View>
+                
+                <View style={prestadorStyles.menuContainer}>
+                    {menuItems.map(item => (
+                    <TouchableOpacity 
+                        key={item.key} 
+                        style={[
+                        prestadorStyles.menuItem, 
+                        view === item.key && prestadorStyles.menuItemSelected
+                        ]} 
+                        onPress={() => setView(item.key)}
+                    >
+                        <Image 
+                        source={item.icon} 
+                        style={[
+                            prestadorStyles.menuIcon,
+                            view === item.key && prestadorStyles.menuIconSelected
+                        ]} 
+                        />
+                        {!isSidebarCollapsed && (
+                        <Text style={[
+                            prestadorStyles.menuText,
+                            view === item.key && prestadorStyles.menuTextSelected
+                        ]}>
+                            {item.label}
+                        </Text>
+                        )}
+                    </TouchableOpacity>
+                    ))}
+                </View>
+                
+                <View style={prestadorStyles.sidebarFooter}>
+                    <TouchableOpacity 
+                    style={prestadorStyles.logoutButton} 
+                    onPress={handleLogout}
+                    >
+                    <Image source={sairIcon} style={[prestadorStyles.menuIcon, {tintColor: '#FFF'}]} />
+                    {!isSidebarCollapsed && (
+                        <Text style={prestadorStyles.logoutButtonText}>Sair</Text>
+                    )}
+                    </TouchableOpacity>
+                    
+                    {!isSidebarCollapsed ? (
+                    <Text style={{fontSize: 10, color: '#6C757D', marginTop: 10}}>v1.0</Text>
+                    ) : null}
+                </View>
+
+                <TouchableOpacity 
+                    style={prestadorStyles.collapseButton} 
+                    onPress={toggleSidebar}
+                >
+                    <Text style={prestadorStyles.collapseButtonText}>
+                    {isSidebarCollapsed ? '>' : '<'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* CONTEUDO */}
+            <View style={prestadorStyles.content}>
+                {view==='Home' && <RenderSolicitacoes user={user} />}
+                {view==='Agenda' && <RenderAgendaVisual user={user} />}
+                {view==='Serviço' && <RenderMeuServico user={user} />}
+                {view==='Perfil' && <View style={{flex:1}}><PerfilPrestadorScreen /></View>}
+            </View>
+        </View>
+    </ImageBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: '28%', backgroundColor: '#0056B3', paddingTop: 40, paddingBottom: 20, alignItems: 'center', justifyContent: 'space-between' },
-  content: { flex: 1, padding: 15, backgroundColor: '#F8F9FA' },
-  logoText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 30 },
-  menuItem: { width: '100%', paddingVertical: 15, alignItems: 'center' },
-  selected: { backgroundColor: '#004494', borderLeftWidth: 4, borderLeftColor: '#FFF' },
-  menuText: { color: '#B0C4DE', fontSize: 13, textAlign: 'center' },
-  menuLogout: { width: '100%', paddingVertical: 15, alignItems: 'center', backgroundColor: '#DC3545' },
-  textLogout: { color: '#FFF', fontWeight: 'bold' },
-  
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-  label: { fontSize: 14, color: '#555', marginTop: 10 },
-  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, marginTop: 5 },
-  btnSalvar: { backgroundColor: '#28A745', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 30, marginBottom: 50 },
-  btnText: { color: '#FFF', fontWeight: 'bold' },
-  card: { backgroundColor: '#FFF', padding: 12, borderRadius: 8, marginBottom: 10, elevation: 2 },
-  cardTitle: { fontWeight: 'bold', fontSize: 16 },
-  rowBtn: { flexDirection: 'row', marginTop: 10, justifyContent: 'space-between' },
-  btnAccept: { backgroundColor: '#28A745', padding: 8, borderRadius: 5, width: '48%', alignItems: 'center' },
-  btnReject: { backgroundColor: '#DC3545', padding: 8, borderRadius: 5, width: '48%', alignItems: 'center' },
-  itemAgenda: { flexDirection: 'row', backgroundColor: '#E9ECEF', padding: 10, borderRadius: 5, marginBottom: 5, alignItems: 'center' },
-  addArea: { flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 20 },
-  btnAdd: { backgroundColor: '#0056B3', width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  itemServico: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: '#FFF', borderRadius: 8, marginBottom: 5, borderWidth: 1, borderColor: '#EEE' }
-});
