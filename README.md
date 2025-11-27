@@ -37,33 +37,34 @@ Estado: **WIP — protótipo funcional com autenticação e agendamento**.
 ---
 
 ## 🗂️ Estrutura do repositório (atual)
-APPOINTMENT_SERVICES/
-├─ App.js
-├─ app.json
-├─ index.js
-├─ package.json
-├─ package-lock.json
-├─ README.md
-├─ assets/ # imagens e ícones (.png, .jpg)
-└─ src/
-├─ firebase/
-│ └─ firebase.js # configuração e inicialização do Firebase (Auth + Firestore)
-├─ screens/
-│ ├─ index_cliente.js
-│ ├─ index_prestador.js
-│ ├─ login.js
-│ ├─ registro.js
-│ ├─ perfil_cliente.js
-│ └─ WelcomeScreen.js
-├─ services/
-│ └─ api.js # utilitário para integração com Google Calendar
-└─ styles/
-├─ ClienteScreenStyles.js
-├─ LoginScreenStyles.js
-├─ prestadorStyles.js
-├─ ProfileStyles.js
-├─ RegisterScreenStyles.js
-└─ WelcomeScreenStyles.js
+
+- **APPOINTMENT_SERVICES/**
+  - `App.js`
+  - `app.json`
+  - `index.js`
+  - `package.json`
+  - `package-lock.json`
+  - `README.md`
+  - **assets/** — imagens e ícones (`.png`, `.jpg`)
+  - **src/**
+    - **firebase/**
+      - `firebase.js` — configuração e inicialização do Firebase (Auth + Firestore)
+    - **screens/**
+      - `index_cliente.js`
+      - `index_prestador.js`
+      - `login.js`
+      - `registro.js`
+      - `perfil_cliente.js`
+      - `WelcomeScreen.js`
+    - **services/**
+      - `api.js` — utilitário para integração com Google Calendar
+    - **styles/**
+      - `ClienteScreenStyles.js`
+      - `LoginScreenStyles.js`
+      - `prestadorStyles.js`
+      - `ProfileStyles.js`
+      - `RegisterScreenStyles.js`
+      - `WelcomeScreenStyles.js`
 
 ---
 
