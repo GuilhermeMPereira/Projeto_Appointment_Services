@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { welcomeStyles } from '../styles/WelcomeScreenStyles';
 
+
 export default function WelcomeScreen({ navigation }) {
 
   const goToRegisterScreen = () => {

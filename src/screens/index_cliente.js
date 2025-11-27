@@ -489,6 +489,7 @@ export default function ClienteHomeScreen() {
                 )}
               </TouchableOpacity>
             ))}
+          
           </View>
           
           <View style={clienteStyles.sidebarFooter}>

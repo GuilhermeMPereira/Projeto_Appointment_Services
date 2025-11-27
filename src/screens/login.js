@@ -9,6 +9,7 @@ import { auth } from '../firebase/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { loginStyles } from '../styles/LoginScreenStyles';
 
+
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');

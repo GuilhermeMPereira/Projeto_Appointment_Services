@@ -153,6 +153,7 @@ export const clienteStyles = StyleSheet.create({
     color: '#343A40',
     marginBottom: 8,
   },
+  
   welcomeSubtitle: {
     fontSize: 16,
     color: '#6C757D',

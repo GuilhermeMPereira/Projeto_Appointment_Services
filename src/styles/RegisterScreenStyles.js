@@ -15,6 +15,7 @@ export const registerStyles = StyleSheet.create({
     width: width,
     height: height,
   },
+  
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(212, 237, 218, 0.85)', 

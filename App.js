@@ -63,7 +63,8 @@ export default function App() {
     ? (userRole === 'prestador' ? 'HomePrestador' : 'HomeCliente')
     : 'Welcome';
 
-  return (
+  
+    return (
     <NavigationContainer>
       <StatusBar style="auto" />
       

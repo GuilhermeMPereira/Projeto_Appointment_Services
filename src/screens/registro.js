@@ -10,6 +10,7 @@ import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { registerStyles } from '../styles/RegisterScreenStyles';
 
+
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');

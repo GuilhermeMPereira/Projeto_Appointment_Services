@@ -159,6 +159,7 @@ export default function PerfilClienteScreen() {
             />
           </View>
 
+          
           <TouchableOpacity style={profileStyles.button} onPress={handleUpdate} disabled={loading}>
             {loading ? <ActivityIndicator color="#FFF" /> : <Text style={profileStyles.buttonText}>Salvar Alterações</Text>}
           </TouchableOpacity>

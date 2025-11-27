@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import PerfilPrestadorScreen from './perfil_prestador'; 
 import { prestadorStyles } from '../styles/prestadorStyles'; // <--- NOVO IMPORT
 
+
 // Importação de imagens (Usando as mesmas do cliente onde possível ou placeholders)
 // Certifique-se de que essas imagens existem na pasta assets
 const homeIcon = require('../../assets/pedidos.png'); // Reutilizando pedidosIcon para Home
