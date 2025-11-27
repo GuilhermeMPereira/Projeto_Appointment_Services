@@ -1,4 +1,3 @@
-// src/screens/registro.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
@@ -9,7 +8,6 @@ import { auth, db } from '../firebase/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { registerStyles } from '../styles/RegisterScreenStyles';
-
 
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
@@ -104,7 +102,14 @@ export default function RegisterScreen({ navigation }) {
       // 3. Desloga para o usuário ir para a tela de Login
       await signOut(auth);
       
-      Alert.alert("Sucesso", "Conta criada! Faça login para continuar.");
+      if (Platform.OS === 'web') {
+        alert("Sucesso: Conta criada! Faça login para continuar.");
+        navigation.navigate('Login');
+      } else {
+        Alert.alert("Sucesso", "Conta criada! Faça login para continuar.", [
+            { text: "OK", onPress: () => navigation.navigate('Login') }
+        ]);
+      }
 
     } catch (error) {
       console.error(error);
@@ -117,27 +122,33 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={registerStyles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
-        style={registerStyles.container}
-      >
-        <ScrollView 
-          style={registerStyles.container}
-          contentContainerStyle={registerStyles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <ImageBackground 
-            source={require('../../assets/fundoHome.png')} 
-            style={registerStyles.backgroundImage}
-            resizeMode="cover"
+    // 1. Fundo Fixo como Pai
+    <ImageBackground 
+      source={require('../../assets/fundoHome.png')} 
+      style={registerStyles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={registerStyles.overlay}>
+        
+        <SafeAreaView style={registerStyles.container}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"} 
+            style={registerStyles.container}
           >
-            <View style={registerStyles.overlay}>
+            <ScrollView 
+              contentContainerStyle={registerStyles.scrollContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              
+              {/* Container do Formulário (Max Width) */}
               <View style={registerStyles.formContainer}>
+                
                 <View style={registerStyles.header}>
                   <Text style={registerStyles.title}>Crie sua conta</Text>
                 </View>
 
+                {/* Seletor Cliente/Prestador */}
                 <View style={registerStyles.typeContainer}>
                   <TouchableOpacity 
                     style={[
@@ -169,6 +180,7 @@ export default function RegisterScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
+                {/* Campos do Formulário */}
                 <Text style={registerStyles.label}>Nome</Text>
                 <TextInput
                   style={[
@@ -263,11 +275,13 @@ export default function RegisterScreen({ navigation }) {
                 >
                   <Text style={registerStyles.linkText}>Já tem uma conta? Faça Login</Text>
                 </TouchableOpacity>
+
               </View>
-            </View>
-          </ImageBackground>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+
+      </View>
+    </ImageBackground>
   );
 }

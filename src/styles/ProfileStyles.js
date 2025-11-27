@@ -1,15 +1,32 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 export const profileStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
+  
+  // Ajuste no ScrollView para permitir centralização
   scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
+    flexGrow: 1,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    alignItems: 'center', // Centraliza o container responsivo horizontalmente
+  },
+
+  // --- NOVO: Container que limita a largura no PC ---
+  responsiveContainer: {
+    width: '100%',
+    maxWidth: 600, // Largura máxima do "cartão" de perfil
+    backgroundColor: '#FFFFFF', // Fundo branco para destacar no PC
+    borderRadius: 16,
+    padding: 25,
+    // Sombra suave para dar destaque
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   
   header: {
@@ -42,6 +59,7 @@ export const profileStyles = StyleSheet.create({
     fontSize: 14,
     color: '#6C757D',
   },
+  
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -51,9 +69,12 @@ export const profileStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#DEE2E6',
     paddingBottom: 5,
+    width: '100%',
   },
+  
   inputGroup: {
     marginBottom: 15,
+    width: '100%',
   },
   label: {
     fontSize: 14,
@@ -69,13 +90,19 @@ export const profileStyles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#495057',
+    // Remove borda azul nativa da web
+    ...Platform.select({
+      web: { outlineStyle: 'none' }
+    }),
   },
+  
   button: {
     backgroundColor: '#0056B3',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 30,
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -87,12 +114,14 @@ export const profileStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  
   logoutButton: {
-    backgroundColor: '#DC3545', // Vermelho para logout
+    backgroundColor: '#DC3545',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 15,
+    width: '100%',
   },
   logoutText: {
     color: '#FFFFFF',

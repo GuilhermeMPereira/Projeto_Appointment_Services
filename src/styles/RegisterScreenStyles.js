@@ -1,46 +1,48 @@
-// src/styles/RegisterScreenStyles.js
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 export const registerStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-  },
+  // Fundo ocupa 100% da tela sempre
   backgroundImage: {
     flex: 1,
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
   },
-  
+
+  // Overlay escurece o fundo e centraliza o conteúdo
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(212, 237, 218, 0.85)', 
+    width: '100%',
+    height: '100%',
+  },
+
+  container: {
+    flex: 1,
+  },
+
+  // ScrollView centraliza verticalmente se houver espaço
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    // paddingHorizontal removido para permitir largura de 95%
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 40,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
+
+  // Formulário com largura controlada para Desktop
   formContainer: {
     width: '100%', 
-    maxWidth: 450, 
+    maxWidth: 500, // Limite para não esticar demais no PC
     backgroundColor: '#FFFFFF', 
     borderRadius: 20,
     padding: 35, 
-    marginBottom: 40, 
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 10,
   },
+
   header: {
     alignItems: 'center',
     marginBottom: 25,
@@ -52,6 +54,8 @@ export const registerStyles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+
+  // Seletor de Tipo (Cliente/Prestador)
   typeContainer: {
     flexDirection: 'row',
     marginBottom: 25,
@@ -77,6 +81,8 @@ export const registerStyles = StyleSheet.create({
   typeTextSelected: {
     color: '#FFFFFF', 
   },
+
+  // Inputs e Labels
   label: {
     fontSize: 16,
     fontWeight: '600',
@@ -91,6 +97,10 @@ export const registerStyles = StyleSheet.create({
     marginBottom: 5,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
+    // Remove borda azul nativa da web
+    ...Platform.select({
+      web: { outlineStyle: 'none' }
+    }),
   },
   inputFocused: {
     borderColor: '#0056B3', 
@@ -112,16 +122,15 @@ export const registerStyles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+
+  // Botões
   button: {
     backgroundColor: '#0056B3', 
     padding: 18,
     borderRadius: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
@@ -138,6 +147,7 @@ export const registerStyles = StyleSheet.create({
   linkContainer: {
     marginTop: 20,
     alignItems: 'center',
+    padding: 10, // Aumenta área de toque
   },
   linkText: {
     color: '#0056B3', 
@@ -145,6 +155,6 @@ export const registerStyles = StyleSheet.create({
     fontWeight: '600',
   },
   loadingContainer: {
-    marginTop: 10,
+    // Centraliza spinner
   },
 });

@@ -1,4 +1,3 @@
-// src/screens/loogin.js
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
@@ -8,7 +7,6 @@ import {
 import { auth } from '../firebase/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { loginStyles } from '../styles/LoginScreenStyles';
-
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -29,7 +27,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await signInWithEmailAndPassword(auth, email, senha);
-      // O App.js detectará o login e mudará a tela automaticamente.
+      // O App.js detectará o login automaticamente
     } catch (error) {
       console.error(error);
       if (error.code === 'auth/invalid-credential') setErrorMsg("E-mail ou senha incorretos.");
@@ -43,22 +41,26 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={loginStyles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
-        style={loginStyles.container}
-      >
-        <ScrollView 
-          style={loginStyles.container}
-          contentContainerStyle={loginStyles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <ImageBackground 
-            source={require('../../assets/fundoHome.png')} 
-            style={loginStyles.backgroundImage}
-            resizeMode="cover"
+    // 1. ImageBackground é o container RAIZ. Ele fica fixo.
+    <ImageBackground 
+      source={require('../../assets/fundoHome.png')} 
+      style={loginStyles.backgroundImage}
+      resizeMode="cover"
+    >
+      {/* 2. O Overlay escurece a imagem inteira */}
+      <View style={loginStyles.overlay}>
+        
+        <SafeAreaView style={loginStyles.container}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"} 
+            style={loginStyles.container}
           >
-            <View style={loginStyles.overlay}>
+            {/* 3. O ScrollView permite rolar APENAS o formulário se a tela for pequena */}
+            <ScrollView 
+              contentContainerStyle={loginStyles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={loginStyles.formContainer}>
                 <View style={loginStyles.header}>
                   <Text style={loginStyles.title}>Acessar</Text>
@@ -107,9 +109,7 @@ export default function LoginScreen({ navigation }) {
                   disabled={loading}
                 >
                   {loading ? (
-                    <View style={loginStyles.loadingContainer}>
-                      <ActivityIndicator color="#FFF" />
-                    </View>
+                    <ActivityIndicator color="#FFF" />
                   ) : (
                     <Text style={loginStyles.buttonText}>Entrar</Text>
                   )}
@@ -122,10 +122,11 @@ export default function LoginScreen({ navigation }) {
                   <Text style={loginStyles.linkText}>Não tem conta? Crie aqui</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </ImageBackground>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+
+      </View>
+    </ImageBackground>
   );
 }

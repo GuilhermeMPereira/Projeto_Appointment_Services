@@ -1,30 +1,42 @@
-// src/styles/WelcomeScreenStyles.js
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 export const welcomeStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-  },
+  // Fundo ocupa a tela toda
   backgroundImage: {
     flex: 1,
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
   },
   
+  // Overlay cobre o fundo e centraliza
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(212, 237, 218, 0.85)',
+    width: '100%',
+    height: '100%',
+  },
+
+  // SafeArea protege contra o notch do iPhone
+  safeArea: {
+    flex: 1,
+  },
+
+  // ScrollView lida com telas pequenas
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingTop: Platform.OS === 'ios' ? 80 : 60, 
-    paddingBottom: 40,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
+
+  // --- NOVO: Limita a largura no Desktop ---
+  responsiveContent: {
+    width: '100%',
+    maxWidth: 500, // Largura máxima para parecer um app no PC
+    alignItems: 'center',
+  },
+
   header: {
     alignItems: 'center',
     marginBottom: 40,
@@ -74,10 +86,7 @@ export const welcomeStyles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#0056B3',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -114,10 +123,7 @@ export const welcomeStyles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
@@ -137,7 +143,7 @@ export const welcomeStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#0056B3',
     marginBottom: 40,
-    backgroundColor: 'transparent',
+    backgroundColor: 'transparent', // Garantir transparência
   },
   secondaryButtonText: {
     color: '#0056B3',

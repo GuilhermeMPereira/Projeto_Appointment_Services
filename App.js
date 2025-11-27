@@ -9,16 +9,21 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './src/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-// Telas
+// Telas de Autenticação e Boas-vindas
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/login';
 import RegisterScreen from './src/screens/registro';
+
+// Telas Principais
 import ClienteHomeScreen from './src/screens/index_cliente';
 import PrestadorHomeScreen from './src/screens/index_prestador';
 
 // Telas de Perfil
 import PerfilClienteScreen from './src/screens/perfil_cliente';
 import PerfilPrestadorScreen from './src/screens/perfil_prestador';
+
+// Tela de Chat (IMPORTANTE: Verifique se o arquivo existe em src/screens/ChatScreen.js)
+import ChatScreen from './src/screens/ChatScreen'; 
 
 const Stack = createNativeStackNavigator();
 
@@ -63,17 +68,16 @@ export default function App() {
     ? (userRole === 'prestador' ? 'HomePrestador' : 'HomeCliente')
     : 'Welcome';
 
-  
-    return (
+  return (
     <NavigationContainer>
       <StatusBar style="auto" />
-      
       <Stack.Navigator initialRouteName={initialRoute}>
         
         {user && userRole ? (
           // --- USUÁRIO LOGADO ---
           userRole === 'prestador' ? (
-             <>
+             // GRUPO DE ROTAS DO PRESTADOR
+             <Stack.Group>
                <Stack.Screen 
                  name="HomePrestador" 
                  component={PrestadorHomeScreen} 
@@ -84,9 +88,15 @@ export default function App() {
                  component={PerfilPrestadorScreen} 
                  options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
                />
-             </>
+               <Stack.Screen 
+                 name="ChatScreen" 
+                 component={ChatScreen} 
+                 options={{ title: 'Chat' }}
+               />
+             </Stack.Group>
           ) : (
-             <>
+             // GRUPO DE ROTAS DO CLIENTE
+             <Stack.Group>
                <Stack.Screen 
                  name="HomeCliente" 
                  component={ClienteHomeScreen} 
@@ -97,31 +107,29 @@ export default function App() {
                  component={PerfilClienteScreen} 
                  options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
                />
-             </>
+               <Stack.Screen 
+                 name="ChatScreen" 
+                 component={ChatScreen} 
+                 options={{ title: 'Chat' }}
+               />
+             </Stack.Group>
           )
         ) : (
           // --- USUÁRIO DESLOGADO ---
-          <>
-            <Stack.Screen 
-              name="Welcome" 
-              component={WelcomeScreen} 
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen 
-              name="Login" 
-              component={LoginScreen} 
-              options={{ headerShown: false }}
-            />
+          <Stack.Group screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen 
               name="Register" 
               component={RegisterScreen} 
               options={{ 
+                headerShown: true,
                 title: '',
                 headerTransparent: true,
                 headerTintColor: '#007bff'
               }}
             />
-          </>
+          </Stack.Group>
         )}
       </Stack.Navigator>
     </NavigationContainer>

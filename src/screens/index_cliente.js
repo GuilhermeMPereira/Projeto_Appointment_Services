@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TouchableOpacity, ScrollView, 
   TextInput, Alert, FlatList, Modal, ActivityIndicator,
-  ImageBackground, Image, Platform // <--- IMPORTANTE: Platform importado
+  ImageBackground, Image, Platform 
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { auth, db } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
 import { 
-  collection, getDocs, addDoc, query, where, onSnapshot 
+  collection, getDocs, addDoc, query, where, onSnapshot, doc, updateDoc 
 } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import PerfilClienteScreen from './perfil_cliente';
@@ -304,27 +304,45 @@ const RenderBusca = ({ user }) => {
 
 const RenderMeusPedidos = ({ user }) => {
   const [pedidos, setPedidos] = useState([]);
+  const navigation = useNavigation();
   
   useEffect(() => {
     const q = query(collection(db, 'agendamentos'), where('clienteId', '==', user.uid));
     const unsub = onSnapshot(q, (snap) => {
       const lista = [];
       snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
-      setPedidos(lista);
+      
+      // Ordenar
+      setPedidos(lista.sort((a,b) => {
+        const priority = ['pendente', 'aguardando_finalizacao'];
+        const aPrio = priority.includes(a.status);
+        const bPrio = priority.includes(b.status);
+        if (aPrio && !bPrio) return -1;
+        if (!aPrio && bPrio) return 1;
+        return 0;
+      }));
     });
     return () => unsub();
   }, [user]);
 
+  const confirmarConclusao = async (id) => {
+    try {
+      await updateDoc(doc(db, 'agendamentos', id), { status: 'finalizado' });
+      Alert.alert("Serviço Finalizado", "Obrigado! O serviço foi marcado como concluído.");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erro", "Falha ao finalizar serviço.");
+    }
+  };
+
   const getStatusInfo = (status) => {
     switch(status) {
-      case 'confirmado':
-        return { color: '#D4EDDA', textColor: '#155724', label: '✓ Confirmado' };
-      case 'pendente':
-        return { color: '#FFF3CD', textColor: '#856404', label: '⏳ Pendente' };
-      case 'recusado':
-        return { color: '#F8D7DA', textColor: '#721C24', label: '❌ Recusado' };
-      default:
-        return { color: '#E2E3E5', textColor: '#383D41', label: status };
+      case 'confirmado': return { color: '#D4EDDA', textColor: '#155724', label: '✓ Confirmado' };
+      case 'aguardando_finalizacao': return { color: '#CCE5FF', textColor: '#004085', label: '🏁 Confirmar Conclusão' };
+      case 'finalizado': return { color: '#E2E3E5', textColor: '#383D41', label: '★ Finalizado' };
+      case 'pendente': return { color: '#FFF3CD', textColor: '#856404', label: '⏳ Pendente' };
+      case 'recusado': return { color: '#F8D7DA', textColor: '#721C24', label: '❌ Recusado' };
+      default: return { color: '#E2E3E5', textColor: '#383D41', label: status };
     }
   };
 
@@ -353,9 +371,7 @@ const RenderMeusPedidos = ({ user }) => {
                 <View style={clienteStyles.appointmentHeader}>
                   <Text style={clienteStyles.appointmentTitle}>{item.servicoNome}</Text>
                   <View style={[clienteStyles.statusBadge, { backgroundColor: statusInfo.color }]}>
-                    <Text style={[clienteStyles.statusText, { color: statusInfo.textColor }]}>
-                      {statusInfo.label}
-                    </Text>
+                    <Text style={[clienteStyles.statusText, { color: statusInfo.textColor }]}>{statusInfo.label}</Text>
                   </View>
                 </View>
                 
@@ -367,6 +383,27 @@ const RenderMeusPedidos = ({ user }) => {
                 </View>
                 
                 <Text style={clienteStyles.providerText}>Profissional: {item.prestadorId}</Text>
+
+                {(item.status === 'confirmado' || item.status === 'aguardando_finalizacao') && (
+                  <TouchableOpacity 
+                    style={{marginTop: 15, backgroundColor: '#0056B3', paddingVertical: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', elevation: 2}} 
+                    onPress={() => navigation.navigate('ChatScreen', { chatId: item.id, title: item.servicoNome })}
+                  >
+                    <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 14}}>💬 Falar com Prestador</Text>
+                  </TouchableOpacity>
+                )}
+
+                {item.status === 'aguardando_finalizacao' && (
+                  <View style={{marginTop: 15, backgroundColor: '#E2E6EA', padding: 10, borderRadius: 8}}>
+                    <Text style={{color: '#343A40', marginBottom: 10, textAlign: 'center', fontSize: 13}}>O prestador marcou este serviço como realizado. Confirma?</Text>
+                    <TouchableOpacity 
+                      style={{backgroundColor: '#28A745', paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center', elevation: 2}} 
+                      onPress={() => confirmarConclusao(item.id)}
+                    >
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 14}}>✅ Sim, Serviço Finalizado</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             );
           }}

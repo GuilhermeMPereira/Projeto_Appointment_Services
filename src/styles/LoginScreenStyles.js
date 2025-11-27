@@ -1,45 +1,45 @@
-// src/styles/LoginScreenStyles.js
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 export const loginStyles = StyleSheet.create({
+  // Container principal que segura a imagem de fundo
   container: {
     flex: 1,
   },
-  scrollContainer: {
-    flexGrow: 1,
-  },
+  // A imagem ocupa todo o espaço disponível e é fixa
   backgroundImage: {
     flex: 1,
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
   },
-  
+  // Overlay escurece a imagem e centraliza o conteúdo
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(212, 237, 218, 0.85)', 
+    width: '100%',
+    height: '100%',
+  },
+  // O ScrollView cuida apenas de rolar o formulário se a tela for pequena
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: 40,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
+  
   formContainer: {
-    width: '95%', // AUMENTADO PARA 95%
-    maxWidth: 450, // AUMENTADO LIMITE MÁXIMO (era 400)
+    width: '100%', 
+    maxWidth: 450, // Limite de largura para não esticar no PC
     backgroundColor: '#FFFFFF', 
     borderRadius: 20,
     padding: 35, 
-    marginBottom: 80, 
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 10,
   },
+  
   header: {
     alignItems: 'center',
     marginBottom: 30,
@@ -56,6 +56,7 @@ export const loginStyles = StyleSheet.create({
     color: '#6C757D', 
     textAlign: 'center',
   },
+  
   label: {
     fontSize: 16,
     fontWeight: '600',
@@ -70,11 +71,16 @@ export const loginStyles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
+    // Propriedade específica para Web (remove borda azul do browser)
+    ...Platform.select({
+      web: { outlineStyle: 'none' }
+    }),
   },
   inputFocused: {
     borderColor: '#0056B3', 
     backgroundColor: '#F8F9FA', 
   },
+  
   errorText: {
     color: '#DC3545', 
     fontSize: 14,
@@ -82,20 +88,18 @@ export const loginStyles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  
   button: {
     backgroundColor: '#0056B3', 
     padding: 18,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 10,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
-    marginTop: 10,
   },
   buttonDisabled: {
     backgroundColor: '#6C757D', 
@@ -105,9 +109,11 @@ export const loginStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  
   linkContainer: {
     marginTop: 25,
     alignItems: 'center',
+    padding: 10, // Aumenta área de toque
   },
   linkText: {
     color: '#0056B3', 
@@ -115,6 +121,6 @@ export const loginStyles = StyleSheet.create({
     fontWeight: '600',
   },
   loadingContainer: {
-    marginTop: 10,
+    
   },
 });
