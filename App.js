@@ -1,0 +1,124 @@
+import React, { useState, useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Firebase imports
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './src/firebase/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Telas
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import LoginScreen from './src/screens/login';
+import RegisterScreen from './src/screens/registro';
+import ClienteHomeScreen from './src/screens/index_cliente';
+import PrestadorHomeScreen from './src/screens/index_prestador';
+import ChatScreen from './src/screens/ChatScreen'; // <--- 1. Importamos a tela de Chat
+
+const Stack = createNativeStackNavigator();
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
+      
+      if (authenticatedUser) {
+        try {
+          const docRef = doc(db, "usuarios", authenticatedUser.uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            setUserRole(docSnap.data().tipo); 
+          }
+          setUser(authenticatedUser);
+        } catch (error) {
+          console.error("Erro ao buscar perfil:", error);
+        }
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+      
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
+
+  const initialRoute = user && userRole
+    ? (userRole === 'prestador' ? 'HomePrestador' : 'HomeCliente')
+    : 'Welcome';
+
+  return (
+    <NavigationContainer>
+      <StatusBar style="auto" />
+      
+      <Stack.Navigator initialRouteName={initialRoute}>
+        
+        {user && userRole ? (
+          // --- USUÁRIO LOGADO ---
+          <>
+            {/* Define a Home baseada no tipo de usuário */}
+            {userRole === 'prestador' ? (
+               <Stack.Screen 
+                 name="HomePrestador" 
+                 component={PrestadorHomeScreen} 
+                 options={{ title: 'Painel do Prestador' }}
+               />
+            ) : (
+               <Stack.Screen 
+                 name="HomeCliente" 
+                 component={ClienteHomeScreen} 
+                 options={{ title: 'Área do Cliente' }}
+               />
+            )}
+
+            {/* --- 2. ADICIONAMOS A ROTA DO CHAT AQUI --- */}
+            {/* Ela fica disponível para ambos (Prestador e Cliente) */}
+            <Stack.Screen 
+              name="Chat" 
+              component={ChatScreen} 
+              options={{ title: 'Conversa' }}
+            />
+          </>
+        ) : (
+          // --- USUÁRIO DESLOGADO ---
+          <>
+            <Stack.Screen 
+              name="Welcome" 
+              component={WelcomeScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Register" 
+              component={RegisterScreen} 
+              options={{ 
+                title: '',
+                headerTransparent: true,
+                headerTintColor: '#007bff'
+              }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
