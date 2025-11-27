@@ -12,6 +12,7 @@ export default function ChatScreen({ route, navigation }) {
   // Recebe o ID do chat. Se não vier, usa um fixo (pode ser a causa se estiver usando ids diferentes)
   const { chatId = 'teste-geral', title = 'Chat' } = route.params || {};
 
+  
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: title,
