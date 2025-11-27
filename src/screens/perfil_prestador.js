@@ -4,8 +4,8 @@ import {
   ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { auth, db } from '../firebase/firebase';
-import { updateProfile, updateEmail, updatePassword } from 'firebase/auth';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { updateProfile, updateEmail, updatePassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { profileStyles } from '../styles/ProfileStyles';
 
 export default function PerfilPrestadorScreen() {
@@ -17,6 +17,14 @@ export default function PerfilPrestadorScreen() {
 
   const user = auth.currentUser;
 
+  const showAlert = (titulo, mensagem) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${titulo}: ${mensagem}`);
+    } else {
+      Alert.alert(titulo, mensagem);
+    }
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -27,33 +35,73 @@ export default function PerfilPrestadorScreen() {
             const data = docSnap.data();
             setNome(data.nome || '');
             setEmail(user.email || '');
+          } else {
+            setNome(user.displayName || '');
+            setEmail(user.email || '');
           }
-        } catch (error) { console.error(error); } 
-        finally { setInitialLoading(false); }
+        } catch (error) { 
+          console.error(error); 
+        } finally { 
+          setInitialLoading(false); 
+        }
       }
     };
     fetchUserData();
   }, []);
 
   const handleUpdate = async () => {
-    if (!nome || !email) { Alert.alert("Erro", "Preencha os campos."); return; }
+    if (!nome || !email) { 
+      showAlert("Erro", "Preencha todos os campos."); 
+      return; 
+    }
     setLoading(true);
     try {
-      await updateDoc(doc(db, "usuarios", user.uid), { nome, email });
-      try { await updateDoc(doc(db, "prestadores", user.uid), { nomeAnuncio: nome }); } catch(e){}
+      // 1. Salvar no Firestore
+      await setDoc(doc(db, "usuarios", user.uid), { nome, email }, { merge: true });
       
-      if (user.displayName !== nome) await updateProfile(user, { displayName: nome });
-      if (user.email !== email) await updateEmail(user, email);
-      
-      if (novaSenha) {
-        if (novaSenha.length < 6) { Alert.alert("Erro", "Senha curta."); setLoading(false); return; }
-        await updatePassword(user, novaSenha);
+      // Sincronizar com a coleção de prestadores
+      try { 
+        await setDoc(doc(db, "prestadores", user.uid), { nomeAnuncio: nome }, { merge: true }); 
+      } catch(e) {
+        console.log("Erro sync prestador:", e);
       }
-      Alert.alert("Sucesso", "Perfil atualizado!");
-      setNovaSenha('');
+      
+      // 2. Atualizar Auth (Nome)
+      if (user.displayName !== nome) await updateProfile(user, { displayName: nome });
+      
+      // 3. Atualizar Auth (E-mail/Senha)
+      try {
+        if (user.email !== email) await updateEmail(user, email);
+        
+        if (novaSenha && novaSenha.length >= 6) {
+          await updatePassword(user, novaSenha);
+        } else if (novaSenha) {
+          showAlert("Aviso", "Senha muito curta ignorada.");
+        }
+        
+        showAlert("Sucesso", "Perfil atualizado!");
+        setNovaSenha('');
+      } catch (authError) {
+        console.error("Erro Auth:", authError);
+        if (authError.code === 'auth/requires-recent-login') {
+          showAlert("Segurança", "Para alterar dados sensíveis, saia e faça login novamente.");
+        } else if (authError.code === 'auth/operation-not-allowed') {
+          showAlert("Bloqueio Firebase", "Desative a 'Email enumeration protection' no Console do Firebase > Authentication > Settings.");
+        } else {
+          showAlert("Erro parcial", "Nome salvo, mas erro no email/senha: " + authError.message);
+        }
+      }
+
     } catch (error) {
-      Alert.alert("Erro", "Falha ao atualizar.");
-    } finally { setLoading(false); }
+      showAlert("Erro", "Falha ao atualizar dados.");
+      console.error(error);
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const handleLogout = () => {
+    signOut(auth).catch(err => console.error(err));
   };
 
   if (initialLoading) return <ActivityIndicator size="large" color="#0056B3" style={{marginTop:50}} />;
@@ -64,31 +112,53 @@ export default function PerfilPrestadorScreen() {
         <ScrollView contentContainerStyle={profileStyles.scrollContainer}>
           <View style={profileStyles.header}>
             <View style={[profileStyles.avatarContainer, { borderColor: '#28A745' }]}> 
-              <Text style={[profileStyles.avatarText, { color: '#28A745' }]}>{nome.charAt(0).toUpperCase()}</Text>
+              <Text style={[profileStyles.avatarText, { color: '#28A745' }]}>
+                {nome ? nome.charAt(0).toUpperCase() : 'P'}
+              </Text>
             </View>
             <Text style={profileStyles.title}>Perfil Profissional</Text>
             <Text style={profileStyles.subtitle}>Prestador</Text>
           </View>
 
-          <Text style={profileStyles.sectionTitle}>Dados</Text>
+          <Text style={profileStyles.sectionTitle}>Dados da Conta</Text>
           <View style={profileStyles.inputGroup}>
-            <Text style={profileStyles.label}>Nome</Text>
-            <TextInput style={profileStyles.input} value={nome} onChangeText={setNome} />
+            <Text style={profileStyles.label}>Nome Comercial</Text>
+            <TextInput 
+              style={profileStyles.input} 
+              value={nome} 
+              onChangeText={setNome} 
+              placeholder="Nome exibido aos clientes"
+            />
           </View>
           <View style={profileStyles.inputGroup}>
             <Text style={profileStyles.label}>E-mail</Text>
-            <TextInput style={profileStyles.input} value={email} onChangeText={setEmail} autoCapitalize="none" />
+            <TextInput 
+              style={profileStyles.input} 
+              value={email} 
+              onChangeText={setEmail} 
+              autoCapitalize="none" 
+              keyboardType="email-address"
+            />
           </View>
 
           <Text style={profileStyles.sectionTitle}>Segurança</Text>
           <View style={profileStyles.inputGroup}>
             <Text style={profileStyles.label}>Nova Senha</Text>
-            <TextInput style={profileStyles.input} value={novaSenha} onChangeText={setNovaSenha} secureTextEntry />
+            <TextInput 
+              style={profileStyles.input} 
+              value={novaSenha} 
+              onChangeText={setNovaSenha} 
+              secureTextEntry 
+              placeholder="Mínimo 6 caracteres"
+            />
           </View>
 
           <TouchableOpacity style={[profileStyles.button, { backgroundColor: '#28A745' }]} onPress={handleUpdate} disabled={loading}>
             {loading ? <ActivityIndicator color="#FFF" /> : <Text style={profileStyles.buttonText}>Salvar Dados</Text>}
           </TouchableOpacity>
+
+         
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

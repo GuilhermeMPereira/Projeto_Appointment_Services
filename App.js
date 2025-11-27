@@ -16,6 +16,10 @@ import RegisterScreen from './src/screens/registro';
 import ClienteHomeScreen from './src/screens/index_cliente';
 import PrestadorHomeScreen from './src/screens/index_prestador';
 
+// Telas de Perfil
+import PerfilClienteScreen from './src/screens/perfil_cliente';
+import PerfilPrestadorScreen from './src/screens/perfil_prestador';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -25,7 +29,6 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
-      
       if (authenticatedUser) {
         try {
           const docRef = doc(db, "usuarios", authenticatedUser.uid);
@@ -42,7 +45,6 @@ export default function App() {
         setUser(null);
         setUserRole(null);
       }
-      
       setLoading(false);
     });
 
@@ -70,17 +72,31 @@ export default function App() {
         {user && userRole ? (
           // --- USUÁRIO LOGADO ---
           userRole === 'prestador' ? (
-             <Stack.Screen 
-               name="HomePrestador" 
-               component={PrestadorHomeScreen} 
-               options={{ title: 'Painel do Prestador' }}
-             />
+             <>
+               <Stack.Screen 
+                 name="HomePrestador" 
+                 component={PrestadorHomeScreen} 
+                 options={{ headerShown: false }} 
+               />
+               <Stack.Screen 
+                 name="PerfilPrestador" 
+                 component={PerfilPrestadorScreen} 
+                 options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
+               />
+             </>
           ) : (
-             <Stack.Screen 
-               name="HomeCliente" 
-               component={ClienteHomeScreen} 
-               options={{ title: 'Área do Cliente' }}
-             />
+             <>
+               <Stack.Screen 
+                 name="HomeCliente" 
+                 component={ClienteHomeScreen} 
+                 options={{ headerShown: false }} 
+               />
+               <Stack.Screen 
+                 name="PerfilCliente" 
+                 component={PerfilClienteScreen} 
+                 options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
+               />
+             </>
           )
         ) : (
           // --- USUÁRIO DESLOGADO ---
