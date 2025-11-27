@@ -12,13 +12,15 @@ import { useNavigation } from '@react-navigation/native';
 import PerfilPrestadorScreen from './perfil_prestador'; 
 import { prestadorStyles } from '../styles/prestadorStyles';
 
-// Imagens
+// --- CONFIGURAÇÃO DE IMAGENS ---
+// Certifique-se que estas imagens existem na pasta assets
 const homeIcon = require('../../assets/pedidos.png'); 
 const agendaIcon = require('../../assets/lupa.jpg'); 
 const servicoIcon = require('../../assets/avaliar.jpg'); 
 const perfilIcon = require('../../assets/perfil.png');
 const sairIcon = require('../../assets/sair.png');
 
+// --- CONFIGURAÇÃO DO CALENDÁRIO ---
 LocaleConfig.locales['br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
   monthNamesShort: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
@@ -28,19 +30,20 @@ LocaleConfig.locales['br'] = {
 };
 LocaleConfig.defaultLocale = 'br';
 
-// --- COMPONENTES ---
-
+// ==================================================
+// COMPONENTE 1: SOLICITAÇÕES (PEDIDOS)
+// ==================================================
 const RenderSolicitacoes = ({ user }) => {
   const [pedidos, setPedidos] = useState([]);
   const navigation = useNavigation();
   
   useEffect(() => { 
     const q = query(collection(db, 'agendamentos'), where('prestadorId', '==', user.uid)); 
-    const u = onSnapshot(q, (s) => { 
-      const l=[]; 
-      s.forEach(d=>l.push({id: d.id, ...d.data()})); 
+    const unsubscribe = onSnapshot(q, (snapshot) => { 
+      const lista = []; 
+      snapshot.forEach(d => lista.push({id: d.id, ...d.data()})); 
       
-      setPedidos(l.sort((a,b) => {
+      setPedidos(lista.sort((a,b) => {
         const priority = ['pendente', 'aguardando_finalizacao'];
         const aPrio = priority.includes(a.status);
         const bPrio = priority.includes(b.status);
@@ -49,48 +52,40 @@ const RenderSolicitacoes = ({ user }) => {
         return 0;
       })); 
     }); 
-    return ()=>u(); 
+    return () => unsubscribe(); 
   }, [user]);
 
   const aceitar = async (id) => { 
     try { 
       await updateDoc(doc(db, 'agendamentos', id), { status: 'confirmado' }); 
-      if (Platform.OS === 'web') window.alert("Sucesso: Confirmado!");
-      else Alert.alert("Sucesso", "Confirmado!"); 
+      alertPlataforma("Sucesso", "Agendamento confirmado!"); 
     } catch (e) { 
-        console.error(e);
-        Alert.alert("Erro ao confirmar"); 
+      console.error(e);
+      alertPlataforma("Erro", "Erro ao confirmar agendamento."); 
     } 
   };
   
-  const recusar = async (id) => await updateDoc(doc(db, 'agendamentos', id), { status: 'recusado' });
+  const recusar = async (id) => {
+    try {
+      await updateDoc(doc(db, 'agendamentos', id), { status: 'recusado' });
+    } catch (e) { console.error(e); }
+  };
 
-  // --- CORREÇÃO AQUI: Lógica de alerta compatível com WEB ---
   const solicitarFinalizacao = async (id) => {
     try {
       await updateDoc(doc(db, 'agendamentos', id), { status: 'aguardando_finalizacao' });
-      
-      if (Platform.OS === 'web') {
-        window.alert("Solicitação Enviada! O cliente foi notificado.");
-      } else {
-        Alert.alert("Solicitação Enviada", "O cliente foi notificado para confirmar a conclusão.");
-      }
+      alertPlataforma("Solicitação Enviada", "O cliente foi notificado para confirmar a conclusão.");
     } catch (e) {
       console.error(e);
-      if (Platform.OS === 'web') window.alert("Erro: Não foi possível enviar.");
-      else Alert.alert("Erro", "Não foi possível enviar a solicitação.");
+      alertPlataforma("Erro", "Não foi possível enviar a solicitação.");
     }
   };
 
   const confirmarAcaoFinalizar = (id) => {
     if (Platform.OS === 'web') {
-      // Lógica específica para WEB
-      const confirmou = window.confirm("Finalizar Serviço: Deseja solicitar ao cliente a finalização deste serviço?");
-      if (confirmou) {
-        solicitarFinalizacao(id);
-      }
+      const confirmou = window.confirm("Deseja solicitar ao cliente a finalização deste serviço?");
+      if (confirmou) solicitarFinalizacao(id);
     } else {
-      // Lógica para CELULAR
       Alert.alert(
         "Finalizar Serviço",
         "Deseja solicitar ao cliente a finalização deste serviço?",
@@ -100,6 +95,12 @@ const RenderSolicitacoes = ({ user }) => {
         ]
       );
     }
+  };
+
+  // Helper para alertas
+  const alertPlataforma = (titulo, msg) => {
+    if (Platform.OS === 'web') window.alert(`${titulo}: ${msg}`);
+    else Alert.alert(titulo, msg);
   };
 
   const getBorderColor = (status) => {
@@ -153,17 +154,9 @@ const RenderSolicitacoes = ({ user }) => {
                   <Text style={prestadorStyles.btnText}>💬 Chat com Cliente</Text>
                 </TouchableOpacity>
 
-                {/* Botão Finalizar com a nova lógica de clique */}
                 {item.status === 'confirmado' && (
                   <TouchableOpacity 
-                    style={{
-                      marginTop: 10, 
-                      backgroundColor: '#17A2B8', 
-                      padding: 12, 
-                      borderRadius: 10, 
-                      alignItems: 'center', 
-                      elevation: 2
-                    }} 
+                    style={{marginTop: 10, backgroundColor: '#17A2B8', padding: 12, borderRadius: 10, alignItems: 'center'}} 
                     onPress={() => confirmarAcaoFinalizar(item.id)}
                   >
                     <Text style={prestadorStyles.btnText}>🏁 Finalizar Serviço</Text>
@@ -190,6 +183,101 @@ const RenderSolicitacoes = ({ user }) => {
   );
 };
 
+// ==================================================
+// COMPONENTE 2: AGENDA VISUAL (O QUE ESTAVA FALTANDO)
+// ==================================================
+const RenderAgendaVisual = ({ user }) => {
+  const [items, setItems] = useState({});
+  const [markedDates, setMarkedDates] = useState({});
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dayEvents, setDayEvents] = useState([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'agendamentos'), 
+      where('prestadorId', '==', user.uid),
+      where('status', '==', 'confirmado') 
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newItems = {};
+      const newMarked = {};
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const dateKey = data.dataString; 
+
+        if (!newItems[dateKey]) newItems[dateKey] = [];
+        newItems[dateKey].push({ id: doc.id, ...data });
+
+        newMarked[dateKey] = { marked: true, dotColor: '#28A745' };
+      });
+
+      setItems(newItems);
+      setMarkedDates(newMarked);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const onDayPress = (day) => {
+    setSelectedDate(day.dateString);
+    const events = items[day.dateString] || [];
+    events.sort((a, b) => a.horaString.localeCompare(b.horaString));
+    setDayEvents(events);
+  };
+
+  return (
+    <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={false}>
+      <View style={prestadorStyles.headerSection}>
+        <Text style={prestadorStyles.pageTitle}>Minha Agenda</Text>
+        <Text style={prestadorStyles.pageSubtitle}>Seus compromissos confirmados</Text>
+      </View>
+
+      <View style={prestadorStyles.card}>
+        <Calendar
+          onDayPress={onDayPress}
+          markedDates={{
+            ...markedDates,
+            [selectedDate]: { selected: true, selectedColor: '#0056B3', marked: markedDates[selectedDate]?.marked }
+          }}
+          theme={{
+            todayTextColor: '#0056B3',
+            arrowColor: '#0056B3',
+            dotColor: '#28A745',
+            selectedDayBackgroundColor: '#0056B3',
+          }}
+        />
+      </View>
+
+      <View style={{paddingBottom: 40}}>
+        <Text style={[prestadorStyles.cardTitle, {marginBottom: 10, paddingHorizontal: 5}]}>
+          {selectedDate ? `Dia: ${selectedDate.split('-').reverse().join('/')}` : 'Selecione uma data'}
+        </Text>
+
+        {dayEvents.length === 0 ? (
+          <View style={[prestadorStyles.card, {alignItems: 'center', padding: 20}]}>
+            <Text style={{color: '#6c757d'}}>Nenhum agendamento para este dia.</Text>
+          </View>
+        ) : (
+          dayEvents.map((event, index) => (
+            <View key={index} style={[prestadorStyles.card, {borderLeftColor: '#28A745', borderLeftWidth: 5}]}>
+              <Text style={{fontSize: 16, fontWeight: 'bold', color: '#333'}}>
+                🕒 {event.horaString} - {event.servicoNome}
+              </Text>
+              <Text style={{color: '#555', marginTop: 5}}>👤 {event.clienteNome}</Text>
+              <Text style={{color: '#28A745', fontWeight: 'bold', marginTop: 5}}>R$ {event.servicoPreco}</Text>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
+  );
+};
+
+// ==================================================
+// COMPONENTE 3: MEUS SERVIÇOS
+// ==================================================
 const RenderMeuServico = ({ user }) => {
   const [nome, setNome] = useState(''); 
   const [desc, setDesc] = useState(''); 
@@ -209,6 +297,7 @@ const RenderMeuServico = ({ user }) => {
   }, [user]);
 
   const add = () => { if(!novo) return; setList([...list, {nome:novo, preco}]); setNovo(''); setPreco(''); };
+  
   const save = async () => { 
       await setDoc(doc(db, 'prestadores', user.uid), { nomeAnuncio:nome, descricao:desc, meusServicos:list }, {merge:true}); 
       if (Platform.OS === 'web') window.alert("Dados salvos com sucesso!");
@@ -219,22 +308,19 @@ const RenderMeuServico = ({ user }) => {
     <ScrollView showsVerticalScrollIndicator={false}>
       <View style={prestadorStyles.headerSection}>
         <Text style={prestadorStyles.pageTitle}>Meus Serviços</Text>
-        <Text style={prestadorStyles.pageSubtitle}>Configure seu perfil e lista de preços</Text>
+        <Text style={prestadorStyles.pageSubtitle}>Configure seu perfil</Text>
       </View>
 
       <View style={prestadorStyles.card}>
         <Text style={[prestadorStyles.cardTitle, {marginBottom: 15}]}>Informações do Negócio</Text>
-        
         <Text style={prestadorStyles.label}>Nome do Profissional / Empresa:</Text>
         <TextInput style={prestadorStyles.input} value={nome} onChangeText={setNome} placeholder="Ex: João Eletricista"/>
-        
         <Text style={prestadorStyles.label}>Descrição / Bio:</Text>
-        <TextInput style={[prestadorStyles.input, {height: 80, textAlignVertical: 'top'}]} multiline value={desc} onChangeText={setDesc} placeholder="Conte um pouco sobre sua experiência..."/>
+        <TextInput style={[prestadorStyles.input, {height: 80, textAlignVertical: 'top'}]} multiline value={desc} onChangeText={setDesc} placeholder="Experiência..."/>
       </View>
 
       <View style={prestadorStyles.card}>
-        <Text style={[prestadorStyles.cardTitle]}>Catálogo de Serviços</Text>
-        
+        <Text style={[prestadorStyles.cardTitle]}>Catálogo</Text>
         <View style={prestadorStyles.addArea}>
             <View style={{flex: 1}}>
                 <TextInput style={[prestadorStyles.input, {marginBottom: 5}]} placeholder="Nome do Serviço" value={novo} onChangeText={setNovo}/>
@@ -245,7 +331,6 @@ const RenderMeuServico = ({ user }) => {
             </TouchableOpacity>
         </View>
 
-        {/* SCROLL INTERNO PARA A LISTA DE SERVIÇOS */}
         <ScrollView style={prestadorStyles.servicesListScroll} nestedScrollEnabled={true}>
           {list.map((l,i)=>(
               <View key={i} style={prestadorStyles.itemServico}>
@@ -268,8 +353,9 @@ const RenderMeuServico = ({ user }) => {
   );
 };
 
-// --- TELA PRINCIPAL RESPONSIVA ---
-
+// ==================================================
+// TELA PRINCIPAL (LAYOUT RESPONSIVO)
+// ==================================================
 export default function PrestadorHomeScreen() {
   const navigation = useNavigation();
   const [view, setView] = useState('Home');
@@ -309,7 +395,7 @@ export default function PrestadorHomeScreen() {
     >
         <View style={prestadorStyles.overlay}>
             
-            {/* SIDEBAR (Renderiza apenas se NÃO for Mobile) */}
+            {/* SIDEBAR (Apenas Desktop/Tablet) */}
             {!isMobile && (
               <View style={[
                   prestadorStyles.sidebar,
@@ -369,10 +455,10 @@ export default function PrestadorHomeScreen() {
               </View>
             )}
 
-            {/* CONTEUDO PRINCIPAL */}
+            {/* CONTEÚDO */}
             <View style={[prestadorStyles.content, { paddingHorizontal: isMobile ? 15 : 40 }]}>
                 
-                {/* MENU MOBILE (Renderiza apenas se FOR Mobile) */}
+                {/* MENU MOBILE (Apenas Mobile) */}
                 {isMobile && (
                     <View style={prestadorStyles.mobileNavContainer}>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={prestadorStyles.mobileScroll}>
@@ -398,9 +484,10 @@ export default function PrestadorHomeScreen() {
                     </View>
                 )}
 
-                {/* Container Responsivo (Centraliza e Limita Largura) */}
+                {/* RENDERIZAÇÃO DAS TELAS */}
                 <View style={prestadorStyles.responsiveContainer}>
                     {view==='Home' && <RenderSolicitacoes user={user} />}
+                    {/* AQUI ESTAVA O ERRO, AGORA O COMPONENTE EXISTE: */}
                     {view==='Agenda' && <RenderAgendaVisual user={user} />}
                     {view==='Serviço' && <RenderMeuServico user={user} />}
                     {view==='Perfil' && <View style={{flex:1}}><PerfilPrestadorScreen /></View>}

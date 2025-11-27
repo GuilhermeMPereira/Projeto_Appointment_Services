@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon-app.png",
-    "scheme": "meuapp" ,
+    "scheme": "meuapp",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -28,8 +28,11 @@
     },
     "plugins": [
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3a2a736a-f59d-40b2-a502-976149603436"
+      }
+    }
   }
-
 }
-
