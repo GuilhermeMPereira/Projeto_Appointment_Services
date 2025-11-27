@@ -10,24 +10,26 @@ import { auth, db } from './src/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 // Telas
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/login';
 import RegisterScreen from './src/screens/registro';
 import ClienteHomeScreen from './src/screens/index_cliente';
 import PrestadorHomeScreen from './src/screens/index_prestador';
 
+// Telas de Perfil
+import PerfilClienteScreen from './src/screens/perfil_cliente';
+import PerfilPrestadorScreen from './src/screens/perfil_prestador';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'cliente' ou 'prestador'
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Escuta mudanças na autenticação (Login/Logout)
     const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
-      
       if (authenticatedUser) {
-        // Se logou, busca no banco se é cliente ou prestador
         try {
           const docRef = doc(db, "usuarios", authenticatedUser.uid);
           const docSnap = await getDoc(docRef);
@@ -40,11 +42,9 @@ export default function App() {
           console.error("Erro ao buscar perfil:", error);
         }
       } else {
-        // Se deslogou
         setUser(null);
         setUserRole(null);
       }
-      
       setLoading(false);
     });
 
@@ -59,34 +59,54 @@ export default function App() {
     );
   }
 
-  return (
+  const initialRoute = user && userRole
+    ? (userRole === 'prestador' ? 'HomePrestador' : 'HomeCliente')
+    : 'Welcome';
+
+  
+    return (
     <NavigationContainer>
       <StatusBar style="auto" />
       
-      {/* initialRouteName="Login": Define o ponto de partida padrão.
-         A mágica acontece abaixo: Se 'user' existe, mostramos SÓ as telas de Home.
-         Se 'user' não existe, mostramos SÓ as telas de Auth (Login/Registro).
-      */}
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName={initialRoute}>
         
         {user && userRole ? (
           // --- USUÁRIO LOGADO ---
           userRole === 'prestador' ? (
-             <Stack.Screen 
-               name="HomePrestador" 
-               component={PrestadorHomeScreen} 
-               options={{ title: 'Painel do Prestador' }}
-             />
+             <>
+               <Stack.Screen 
+                 name="HomePrestador" 
+                 component={PrestadorHomeScreen} 
+                 options={{ headerShown: false }} 
+               />
+               <Stack.Screen 
+                 name="PerfilPrestador" 
+                 component={PerfilPrestadorScreen} 
+                 options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
+               />
+             </>
           ) : (
-             <Stack.Screen 
-               name="HomeCliente" 
-               component={ClienteHomeScreen} 
-               options={{ title: 'Área do Cliente' }}
-             />
+             <>
+               <Stack.Screen 
+                 name="HomeCliente" 
+                 component={ClienteHomeScreen} 
+                 options={{ headerShown: false }} 
+               />
+               <Stack.Screen 
+                 name="PerfilCliente" 
+                 component={PerfilClienteScreen} 
+                 options={{ title: 'Meu Perfil', headerBackTitle: 'Voltar' }}
+               />
+             </>
           )
         ) : (
           // --- USUÁRIO DESLOGADO ---
           <>
+            <Stack.Screen 
+              name="Welcome" 
+              component={WelcomeScreen} 
+              options={{ headerShown: false }}
+            />
             <Stack.Screen 
               name="Login" 
               component={LoginScreen} 
@@ -97,7 +117,7 @@ export default function App() {
               component={RegisterScreen} 
               options={{ 
                 title: '',
-                headerTransparent: true, // Seta flutuante
+                headerTransparent: true,
                 headerTintColor: '#007bff'
               }}
             />

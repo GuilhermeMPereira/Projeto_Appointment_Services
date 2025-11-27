@@ -1,28 +1,25 @@
-// Importa as funções necessárias do SDK
+// src/firebase/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";       // Importante para o Login/Registro
-import { getFirestore } from "firebase/firestore"; // Importante para salvar os dados
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// Suas credenciais do Firebase (Copiadas do seu código)
+// Cole suas chaves aqui (pegue no Console do Firebase)
 const firebaseConfig = {
-  apiKey: "AIzaSyB5FTiAIWs2EdrflD_W41aL4QD6ckfgCvc",
-  authDomain: "appointmentservices-8ab53.firebaseapp.com",
-  projectId: "appointmentservices-8ab53",
-  storageBucket: "appointmentservices-8ab53.firebasestorage.app",
-  messagingSenderId: "898636099226",
-  appId: "1:898636099226:web:4b25ae49c6c4f36f4a3923",
-  measurementId: "G-6TE6NH2F35"
+  apiKey: "AIzaSyBcysEjZlvN5FZg0easvJoHOYbNbp7D2x0",
+  authDomain: "appointmentservices-58258.firebaseapp.com",
+  projectId: "appointmentservices-58258",
+  storageBucket: "appointmentservices-58258.firebasestorage.app",
+  messagingSenderId: "1006396462830",
+  appId: "1:1006396462830:web:04ea0a1a8a5e891ac6c5ff",
+  measurementId: "G-9K0NH2BG2J"
 };
 
-// 1. Inicializa o app
+// Inicializa o app do Firebase
 const app = initializeApp(firebaseConfig);
 
-// 2. Inicializa e EXPORTA a Autenticação (Isso corrige o erro anterior)
-export const auth = getAuth(app);
+// Inicializa e exporta a Autenticação e o Banco de Dados
+// Isso permite que você use 'auth' e 'db' em outros arquivos (como no registro e login)
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// 3. Inicializa e EXPORTA o Banco de Dados (Para salvar usuário e prestador)
-export const db = getFirestore(app);
-
-// (O Analytics é opcional agora, se quiser ativar depois, descomente a linha abaixo)
-// import { getAnalytics } from "firebase/analytics";
-// const analytics = getAnalytics(app);
+export { auth, db };

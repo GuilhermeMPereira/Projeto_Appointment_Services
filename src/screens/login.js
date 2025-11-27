@@ -1,17 +1,21 @@
+// src/screens/loogin.js
 import React, { useState } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ActivityIndicator, KeyboardAvoidingView, Platform 
+  View, Text, TextInput, TouchableOpacity, 
+  ActivityIndicator, ScrollView, ImageBackground,
+  KeyboardAvoidingView, Platform, SafeAreaView
 } from 'react-native';
-
 import { auth } from '../firebase/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { loginStyles } from '../styles/LoginScreenStyles';
+
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [focusedInput, setFocusedInput] = useState(null);
 
   const handleLogin = async () => {
     setErrorMsg(null);
@@ -25,7 +29,6 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await signInWithEmailAndPassword(auth, email, senha);
-      // Não precisa de navigation.navigate aqui. 
       // O App.js detectará o login e mudará a tela automaticamente.
     } catch (error) {
       console.error(error);
@@ -40,52 +43,89 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Bem-vindo</Text>
-        
-        <Text style={styles.label}>E-mail</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="seu@email.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+    <SafeAreaView style={loginStyles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        style={loginStyles.container}
+      >
+        <ScrollView 
+          style={loginStyles.container}
+          contentContainerStyle={loginStyles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <ImageBackground 
+            source={require('../../assets/fundoHome.png')} 
+            style={loginStyles.backgroundImage}
+            resizeMode="cover"
+          >
+            <View style={loginStyles.overlay}>
+              <View style={loginStyles.formContainer}>
+                <View style={loginStyles.header}>
+                  <Text style={loginStyles.title}>Acessar</Text>
+                  <Text style={loginStyles.subtitle}>Entre na sua conta para continuar</Text>
+                </View>
+                
+                <Text style={loginStyles.label}>E-mail</Text>
+                <TextInput
+                  style={[
+                    loginStyles.input,
+                    focusedInput === 'email' && loginStyles.inputFocused
+                  ]}
+                  placeholder="seu@email.com"
+                  placeholderTextColor="#8a8a8a"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedInput('email')}
+                  onBlur={() => setFocusedInput(null)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
 
-        <Text style={styles.label}>Senha</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="******"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-        />
+                <Text style={loginStyles.label}>Senha</Text>
+                <TextInput
+                  style={[
+                    loginStyles.input,
+                    focusedInput === 'senha' && loginStyles.inputFocused
+                  ]}
+                  placeholder="******"
+                  placeholderTextColor="#8a8a8a"
+                  value={senha}
+                  onChangeText={setSenha}
+                  onFocus={() => setFocusedInput('senha')}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry
+                />
 
-        {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+                {errorMsg && <Text style={loginStyles.errorText}>{errorMsg}</Text>}
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Entrar</Text>}
-        </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[
+                    loginStyles.button,
+                    loading && loginStyles.buttonDisabled
+                  ]} 
+                  onPress={handleLogin} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <View style={loginStyles.loadingContainer}>
+                      <ActivityIndicator color="#FFF" />
+                    </View>
+                  ) : (
+                    <Text style={loginStyles.buttonText}>Entrar</Text>
+                  )}
+                </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkContainer}>
-            <Text style={styles.linkText}>Não tem conta? Crie aqui</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Register')} 
+                  style={loginStyles.linkContainer}
+                >
+                  <Text style={loginStyles.linkText}>Não tem conta? Crie aqui</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ImageBackground>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'center' },
-  formContainer: { padding: 20 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 40, textAlign: 'center', color: '#333' },
-  label: { fontSize: 16, marginBottom: 5, color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 15, fontSize: 16, backgroundColor: '#fafafa' },
-  errorText: { color: '#d9534f', fontSize: 14, marginBottom: 15, textAlign: 'center', fontWeight: 'bold' },
-  button: { backgroundColor: '#007bff', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  linkContainer: { marginTop: 20, alignItems: 'center' },
-  linkText: { color: '#007bff', fontSize: 16 }
-});
